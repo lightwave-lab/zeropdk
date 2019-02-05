@@ -34,4 +34,4 @@ def test_waveguide(lt, top_cell):
     TOP, layout = top_cell(lt)
     layer = layout.layer('1/0')  # TODO fix
     insert_shape(TOP, layer, wg)
-    TOP.write('test_waveguide.gds')
+    TOP.write('tests/tmp/test_waveguide.gds')

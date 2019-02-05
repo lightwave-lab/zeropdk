@@ -30,4 +30,4 @@ def test_rectangle_write(top_cell, lt):
     assert repr(r) == '(-10,-15;-10,-5;10,15;10,5)'
 
     insert_shape(TOP, layer, r)
-    TOP.write('test_rectangle.gds')
+    TOP.write('tests/tmp/test_rectangle.gds')
