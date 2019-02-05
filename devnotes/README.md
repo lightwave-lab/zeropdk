@@ -1,4 +1,5 @@
 Notes from Thomas.
+
 2019-02-04
 
 # Motivation
@@ -33,7 +34,7 @@ A PCell is the most important concept to get right. It is hard to change once pe
 
 With my experience, here are some useful properties of a PCell:
 
-- Reusability across different technologies. One should be able to copy-paste a PCell, say a MRR, between different techs, e.g. Passive/Active Si, SiN, etc.
+- Reusability across different technologies. One should be able to copy-paste the source code of a PCell, say an MRR, between different techs, e.g. Passive/Active Si, SiN, etc.
 - Inheritability. One should be able to augment a PCell. E.g. take a MRR cell made only with passive elements, and add a heater or PN junction to it. Very useful for users. This can be done by using Python's class inheritance scheme, where the most complex PCells inherit from the simpler ones. One can also combine different PCells into one larger one. There are caveats to this approach. Some control flow structures (e.g. if-else) must be avoided.
 - Interactive. To my understanding, we can only know geometric properties after it is instantiated and its parameters are known. For example, we can only know the positions of MRR pins after setting its radius. We should be able to get port positions, boundary box and other geometric properties of the cell.
 - Extra: Layout-tool independence. While I am biased to using KLayout, we can also have a tool-independent layout API. To allow for that, I am going to use klayout.db as my default layout tool and will be sure to pass it as parameter. An advantage of this is that we can have a very lightweight layout tool that only knows points and vectors as default, so that an entire pcell tree can be coded and built without any layout, and only at the end we can trigger the actual layout (polygon creation, cell making) mechanism.
