@@ -9,9 +9,10 @@ from zeropdk.layout.polygons import square
 def test_square(lt):
     a, b = 0, 10
     ex = lt.Vector(1, 0)
+    ey = lt.Vector(0, 1)
     size = random.uniform(a, b)
     origin = lt.Point(0, 0)
-    sq = square(lt, origin, size, ex)
+    sq = square(lt, origin, size, ex, ey)
 
     # This is true for any rectangle
     p1, p2, p3, p4 = sq.each_point()

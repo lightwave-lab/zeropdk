@@ -2,7 +2,8 @@ import random
 import pytest
 from ..context import zeropdk  # noqa
 from zeropdk.layout import backends
-from zeropdk.layout.polygons import layout_rectangle
+from zeropdk.layout.polygons import rectangle
+from zeropdk.layout import insert_shape
 
 
 @pytest.fixture
@@ -25,6 +26,8 @@ def test_rectangle_write(top_cell, lt):
     height = 10
     ex = lt.Vector(1, 1)
     ey = lt.Vector(0, 1)
-    r = layout_rectangle(lt, TOP, layer, center, width, height, ex, ey)
+    r = rectangle(lt, center, width, height, ex, ey)
     assert repr(r) == '(-10,-15;-10,-5;10,15;10,5)'
+
+    insert_shape(TOP, layer, r)
     TOP.write('test_rectangle.gds')

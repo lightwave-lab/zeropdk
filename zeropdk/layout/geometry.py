@@ -18,6 +18,7 @@ def cross_prod(p1, p2):
 
 
 def project(v, ex, ey=None):
+    ''' Compute a such that v = a * ex + b * ey '''
     if ey is None:
         ey = rotate90(ex)
 
@@ -29,4 +30,5 @@ def project(v, ex, ey=None):
     a = cross_prod(ey, v) / cross_prod(ey, ex)
     # b = cross_prod(ex, v) / cross_prod(ex, ey)
 
+    # v == a * ex + b * ey
     return a
