@@ -8,3 +8,4 @@ Polygon = pya.DPolygon
 SimplePolygon = pya.DSimplePolygon
 
 Cell = pya.Cell
+Layout = pya.Layout

@@ -11,3 +11,22 @@ def rotate(point, angle_rad):
 
 
 rotate90 = lambda point: rotate(point, np.pi / 2)
+
+
+def cross_prod(p1, p2):
+    return p1.x * p2.y - p1.y * p2.x
+
+
+def project(v, ex, ey=None):
+    if ey is None:
+        ey = rotate90(ex)
+
+    assert cross_prod(ex, ey) != 0
+
+    # Simple formula
+    # https://math.stackexchange.com/questions/148199/equation-for-non-orthogonal-projection-of-a-point-onto-two-vectors-representing
+
+    a = cross_prod(ey, v) / cross_prod(ey, ex)
+    # b = cross_prod(ex, v) / cross_prod(ex, ey)
+
+    return a
