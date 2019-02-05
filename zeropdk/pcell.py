@@ -1,3 +1,4 @@
+import os
 from typing import Dict, List, Tuple, Any, NewType
 
 TypeDouble = NewType('TypeDouble', float)
@@ -66,3 +67,51 @@ class PCell:
             if name not in self.params:
                 raise RuntimeError('{name} is an invalid param.'.format(name=name))
             self.params[name] = value
+
+
+def GDSCell(backend, cell_name, filename, gds_dir):
+    '''
+        Args:
+            backend: layout backend
+            cell_name: cell within that file.
+            filename: is the gds file name.
+            gds_dir: where to look for file
+
+        Returns:
+            (class) a GDS_cell_base class that can be inherited
+    '''
+
+    assert gds_dir is not None
+
+    cell_cache = {}
+
+    class GDS_cell_base(PCell):
+        """ Imports a gds file and places it."""
+
+        def __init__(self, name=cell_name, **params):
+            super().__init__(name=name, **params)
+
+        def new_cell(self, layout):
+            # Here, the hierarchy is duplicated
+            cell = layout.create_cell(self.name)
+            return self.draw(cell)
+
+        def draw(self, cell, params=None):
+            lt = self.backend
+            layout = cell.layout()
+            filepath = os.path.join(gds_dir, filename)
+
+            # Attempt to read from cache first
+            if (cell_name, filepath) in cell_cache:
+                gdscell = cell_cache[(cell_name, filepath)]
+            else:
+                gdscell = layout.read_cell(cell_name, filepath)
+            cell_cache[(cell_name, filepath)] = gdscell
+
+            origin = lt.Point(0, 0)
+            angle = 0
+
+            cell.insert_cell(gdscell, origin, angle)
+            return cell
+
+    return GDS_cell_base

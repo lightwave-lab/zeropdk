@@ -20,4 +20,42 @@ Polygon = pya.DPolygon
 SimplePolygon = pya.DSimplePolygon
 
 Cell = pya.Cell
+
+
+def cell_insert_cell(cell: Cell, other_cell: Cell,
+                     origin: Point, angle: float):
+    mag = 1
+    rot = angle
+    mirrx = False
+    u = origin
+    trans = pya.DCplxTrans(mag, rot, mirrx, u)
+
+    cell.insert(
+        pya.DCellInstArray(other_cell.cell_index(),
+                           trans))
+    return cell
+
+
+Cell.insert_cell = cell_insert_cell
+
+
+Cell.bbox = Cell.dbbox
+
+# Layout API
+
 Layout = pya.Layout
+
+
+def layout_read_cell(layout, cell_name, filepath):
+    # BUG loading this file twice segfaults klayout
+    layout2 = Layout()
+    layout2.read(filepath)
+    gdscell2 = layout2.cell(cell_name)
+    gdscell = layout.create_cell(cell_name)
+    gdscell.copy_tree(gdscell2)
+    del gdscell2
+    del layout2
+    return gdscell
+
+
+Layout.read_cell = layout_read_cell
