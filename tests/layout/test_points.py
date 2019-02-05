@@ -41,4 +41,8 @@ def test_mul(lt):
         p1 = random_point(lt.Vector)
         p2 = random_point(lt.Vector)
 
-        assert p1 * p2 == p1.x * p2.x + p1.y + p2.y
+        assert p1 * p2 == p1.x * p2.x + p1.y * p2.y
+
+        p3 = p1 * 2
+        assert p3.x == p1.x * 2
+        assert p3.y == p1.y * 2

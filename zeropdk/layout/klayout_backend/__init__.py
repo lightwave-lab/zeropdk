@@ -1,5 +1,5 @@
 import klayout.db as pya
-
+from . import extend  # noqa
 
 Point = pya.DPoint
 Vector = pya.DVector
