@@ -1,4 +1,5 @@
 import random
+import numpy as np
 import pytest
 from ..context import zeropdk  # noqa
 from zeropdk.layout import backends
@@ -46,3 +47,14 @@ def test_mul(lt):
         p3 = p1 * 2
         assert p3.x == p1.x * 2
         assert p3.y == p1.y * 2
+
+
+@pytest.mark.parametrize('lt', backends)
+def test_numpy(lt):
+    t = np.arange(3)
+    ex = lt.Point(1, 0)
+
+    # Point should consume a numpy array and produce a np.array of points
+    point_array = t * ex
+    assert isinstance(point_array, np.ndarray)
+    assert np.all([0 * ex, 1 * ex, 2 * ex] == point_array)

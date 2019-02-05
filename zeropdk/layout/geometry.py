@@ -1,4 +1,5 @@
 import numpy as np
+from zeropdk.layout.algorithms.sampling import sample_function
 
 
 def rotate(point, angle_rad):
@@ -32,3 +33,35 @@ def project(v, ex, ey=None):
 
     # v == a * ex + b * ey
     return a
+
+
+def curve_length(curve, t0=0, t1=1):
+    ''' Computes the total length of a curve.
+
+    Args:
+        curve: list of Points, or
+            parametric function of points, to be computed from t0 to t1.
+    '''
+    # TODO possible bug: if the curve is a loop, it will return 0 (BAD)
+    if isinstance(curve, list):
+        # assuming curve is a list of points
+        scale = (curve[-1] - curve[0]).norm()
+        if scale > 0:
+            coords = np.array([[point.x, point.y] for point in curve]).T
+            dp = np.diff(coords, axis=-1)
+            ds = np.sqrt((dp**2).sum(axis=0))
+            return ds.sum()
+        else:
+            return 0
+    else:
+        # assuming curve is a function.
+        curve_func = curve
+        scale = (curve_func(t1) - curve_func(t0)).norm()
+        if scale > 0:
+            coords = lambda t: np.array([curve_func(t).x, curve_func(t).y])
+            _, sampled_coords = sample_function(coords, [t0, t1], tol=0.0001 / scale, min_points=100)  # 1000 times more precise than the scale
+            dp = np.diff(sampled_coords, axis=-1)
+            ds = np.sqrt((dp**2).sum(axis=0))
+            return ds.sum()
+        else:
+            return 0

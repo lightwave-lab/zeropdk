@@ -19,7 +19,12 @@ debug = False
 
 
 def waveguide_polygon(backend, points_list, width, dbu, smooth=True):
-    """ Returns a polygon outlining a waveguide.
+    """ Returns a polygon outlining a waveguide (or trace) with a
+    certain width along given points.
+
+    This is very useful for laying out Bezier curves with or without
+    adiabatic tapers.
+
 
     This was updated over many iterations of failure. It can be used for both
     smooth optical waveguides or DC metal traces with corners. It is better
@@ -27,9 +32,11 @@ def waveguide_polygon(backend, points_list, width, dbu, smooth=True):
 
     Args:
         points_list: list of backend.Point (at least 2 points)
-        width (microns): constant or list. If list, then it has to have the same length as points
+        width (microns): constant or list. If list, then it has to have
+            the same length as points
         dbu: dbu: typically 0.001, only used for accuracy calculations.
-        smooth: tries to smooth final polygons to avoid very sharp edges (greater than 130 deg)
+        smooth: tries to smooth final polygons to avoid very sharp edges
+            (greater than 130 deg)
     Returns:
         polygon DPoints
 
@@ -214,7 +221,9 @@ def waveguide_polygon(backend, points_list, width, dbu, smooth=True):
     # polygon_dpoints = points_high + list(reversed(points_low))
     # polygon_dpoints = list(reduce(smooth_append, polygon_dpoints, list()))
     polygon_dpoints = smooth_points_high + list(reversed(smooth_points_low))
-    return backend.SimplePolygon(polygon_dpoints)
+    wg_polygon = backend.SimplePolygon(polygon_dpoints)
+    wg_polygon.compress(True)
+    return wg_polygon
 
 
 def layout_waveguide(backend, cell, layer, points_list, width, smooth=False):
