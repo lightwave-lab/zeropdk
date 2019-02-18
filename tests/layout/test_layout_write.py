@@ -20,7 +20,7 @@ def top_cell():
 @pytest.mark.parametrize('lt', backends)
 def test_rectangle_write(top_cell, lt):
     TOP, layout = top_cell(lt)
-    layer = layout.layer('1/0')  # TODO fix
+    layer = '1/0'
     center = lt.Point(0, 0)
     width = 20
     height = 10

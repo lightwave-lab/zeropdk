@@ -32,6 +32,6 @@ def test_waveguide(lt, top_cell):
 
     # write to test_waveguide.gds (we should see a parabola)
     TOP, layout = top_cell(lt)
-    layer = layout.layer('1/0')  # TODO fix
+    layer = '1/0'
     insert_shape(TOP, layer, wg)
     TOP.write('tests/tmp/test_waveguide.gds')

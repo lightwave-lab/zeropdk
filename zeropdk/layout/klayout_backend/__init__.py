@@ -1,5 +1,6 @@
 import klayout.db as pya
 from . import extend  # noqa
+from zeropdk.abstract.backend import Point, Vector
 
 # This is a temporary API implementation. Ideally, we will define
 # all these classes in an abstract way and wrap klayout's classes
@@ -11,13 +12,23 @@ from . import extend  # noqa
 # Another example. A cell needs a layout. So in KLayout, cell.layout()
 # returns a pya.Layout object.
 
+# Adapting KLayout's Point implementation
+pya.DPoint.__init__ = Point.__init__
+
+Point.register(pya.DPoint)
 Point = pya.DPoint
+
+Vector.register(pya.DVector)
 Vector = pya.DVector
 
 Edge = pya.DEdge
 
 Polygon = pya.DPolygon
 SimplePolygon = pya.DSimplePolygon
+
+# used in backend.EdgeProcessor().simple_merge_p2p
+
+EdgeProcessor = pya.EdgeProcessor
 
 Cell = pya.Cell
 
@@ -27,7 +38,7 @@ def cell_insert_cell(cell: Cell, other_cell: Cell,
     mag = 1
     rot = angle
     mirrx = False
-    u = origin
+    u = Point(origin)
     trans = pya.DCplxTrans(mag, rot, mirrx, u)
 
     cell.insert(
@@ -38,8 +49,18 @@ def cell_insert_cell(cell: Cell, other_cell: Cell,
 
 Cell.insert_cell = cell_insert_cell
 
-
 Cell.bbox = Cell.dbbox
+
+old_cell_shapes = Cell.shapes
+
+
+def cell_shapes(self, layer):
+    if not isinstance(layer, int):
+        layer = self.layout().layer(layer)
+    return old_cell_shapes(self, layer)
+
+
+Cell.shapes = cell_shapes
 
 # Layout API
 

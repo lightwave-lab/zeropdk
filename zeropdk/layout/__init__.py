@@ -226,3 +226,6 @@ def patch_simple_polygon(backend):
 
 for backend in backends:
     patch_simple_polygon(backend)
+
+
+from zeropdk.abstract.backend import Point
