@@ -1,18 +1,29 @@
-from klayout.db import LayerInfo
-
-
 class Tech:
     layers = None
+    _backend = None
 
-    def __init__(self):
+    def __init__(self, backend):
+        self._backend = backend
+
         if self.layers is None:
             self.layers = dict()
 
-    def create_layer(self, layer_name, layer_def):
-        self.layers[layer_name] = layer_def
+    def add_layer(self, layer_name, layer_def):
+        ''' Adds a layer to the technology file.
+            layer_name: str: name of layer. (Useless in GDS, useful in OASIS)
+            layer_def: str: 10/0, 10 = layer index, 0, datatype
+        '''
+
+        backend = self._backend
+
+        layer_idx, datatype = layer_def.split('/')
+        layer_idx = int(layer_idx)
+        datatype = int(datatype)
+        self.layers[layer_name] = \
+            backend.LayerInfo(layer_idx, datatype, layer_name)
 
     @classmethod
-    def load_from_xml(cls, lyp_filename):
+    def load_from_xml(cls, backend, lyp_filename):
         with open(lyp_filename, 'r') as file:
             layer_dict = xml_to_dict(file.read())['layer-properties']['properties']
 
@@ -35,8 +46,14 @@ class Tech:
             else:
                 layer_map[k['name']] = layerInfo
 
-        obj = cls()
-        obj.layers.update(layer_map)
+        # layer_map should contain values like '12/0'
+        # 12 is the layer and 0 is the datatype
+
+        obj = cls(backend)
+
+        for layer_name, layer_string in layer_map.items():
+            obj.add_layer(layer_name, layer_string)
+
         return obj
 
 # XML functions

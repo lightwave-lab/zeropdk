@@ -80,3 +80,5 @@ def layout_read_cell(layout, cell_name, filepath):
 
 
 Layout.read_cell = layout_read_cell
+
+LayerInfo = pya.LayerInfo
