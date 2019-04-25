@@ -214,7 +214,7 @@ class PCell:
         for name, value in params.items():
             if name not in self.params:
                 raise RuntimeError("'{name}' is an invalid param.".format(name=name))
-            self.params[name] = value
+            setattr(self.params, name, value)
 
     def new_cell(self, layout):
         # Here, the hierarchy is duplicated
