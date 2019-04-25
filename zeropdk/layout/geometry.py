@@ -23,7 +23,8 @@ def project(v, ex, ey=None):
     if ey is None:
         ey = rotate90(ex)
 
-    assert cross_prod(ex, ey) != 0
+    if cross_prod(ex, ey) == 0:
+        raise RuntimeError('ex={} and ey={} are not orthogonal.'.format(repr(ex), repr(ey)))
 
     # Simple formula
     # https://math.stackexchange.com/questions/148199/equation-for-non-orthogonal-projection-of-a-point-onto-two-vectors-representing

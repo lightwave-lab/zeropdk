@@ -29,7 +29,8 @@ def rectangle(backend, center, width, height, ex, ey):
         ey: orientation of y axis
     """
 
-    assert cross_prod(ex, ey) != 0
+    if cross_prod(ex, ey) == 0:
+        raise RuntimeError('ex={} and ey={} are not orthogonal.'.format(repr(ex), repr(ey)))
 
     point1 = center - width / 2 * ex - height / 2 * ey
     point3 = center + width / 2 * ex + height / 2 * ey
