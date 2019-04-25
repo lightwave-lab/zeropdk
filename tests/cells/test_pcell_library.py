@@ -1,11 +1,11 @@
 import pytest
-from ..context import zeropdk, pcell_library  # noqa
+from ..context import zeropdk  # noqa
+from zeropdk.default_library import io
 from zeropdk.layout import backends
 from zeropdk.abstract.backend import Point
 
-import pcell_library.io
 
-DCPad = pcell_library.io.DCPad
+DCPad = io.DCPad
 DCPad.params.layer_metal = '1/0'
 DCPad.params.layer_opening = '2/0'
 
