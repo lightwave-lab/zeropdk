@@ -1,17 +1,19 @@
 import os
 from copy import copy
-from typing import Dict, List, Tuple, Any, NewType
+from typing import Dict, List, Tuple, Any
 import logging
 from collections.abc import Mapping
+from zeropdk.abstract.backend import Point, Vector, LayerInfo
+
 
 logger = logging.getLogger()
 
-TypeDouble = NewType('TypeDouble', float)
-TypeInt = NewType('TypeInt', int)
-TypeList = NewType('TypeList', List)
-TypePoint = NewType('TypePoint', Any)
-TypeVector = NewType('TypeVector', Any)
-TypeLayer = str
+TypeDouble = float
+TypeInt = int
+TypeList = list
+TypePoint = Point
+TypeVector = Vector
+TypeLayer = LayerInfo
 
 # I like using 'type' as argument names, but that conflicts with
 # python's keyword type
@@ -65,10 +67,13 @@ class PCellParameter:
 
         try:
             return self.type(value)
-        except ValueError:
+        except (TypeError, ValueError):
             raise TypeError(
-                "Cannot set '{name}' to {value}".format(
-                    name=self.name, value=repr(value)))
+                "Cannot set '{name}' to {value}. "
+                "Expected {etype}, got {type}.".format(
+                    name=self.name, value=repr(value),
+                    etype=repr(self.type.__qualname__),
+                    type=repr(type(value).__qualname__)))
 
 
 # https://stackoverflow.com/questions/3387691/how-to-perfectly-override-a-dict

@@ -1,6 +1,6 @@
 import klayout.db as pya
 from . import extend  # noqa
-from zeropdk.abstract.backend import Point, Vector
+from zeropdk.abstract.backend import Point, Vector, LayerInfo
 
 # This is a temporary API implementation. Ideally, we will define
 # all these classes in an abstract way and wrap klayout's classes
@@ -81,4 +81,5 @@ def layout_read_cell(layout, cell_name, filepath):
 
 Layout.read_cell = layout_read_cell
 
+LayerInfo.register(pya.LayerInfo)
 LayerInfo = pya.LayerInfo

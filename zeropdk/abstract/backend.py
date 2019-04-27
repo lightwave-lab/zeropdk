@@ -20,5 +20,9 @@ class Point(ABC):
             raise ValueError('Unknown constructor')
 
 
-class Vector(ABC):
+class Vector(Point):
+    pass
+
+
+class LayerInfo(ABC):
     pass

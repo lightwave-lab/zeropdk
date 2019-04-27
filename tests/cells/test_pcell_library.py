@@ -6,8 +6,6 @@ from zeropdk.abstract.backend import Point
 
 
 DCPad = io.DCPad
-DCPad.params.layer_metal = '1/0'
-DCPad.params.layer_opening = '2/0'
 
 
 @pytest.fixture
@@ -24,6 +22,12 @@ def top_cell():
 @pytest.mark.parametrize('lt', backends)
 def test_pad_pcell(lt, top_cell):
     pad = DCPad(name='testname', backend=lt)
+    pad.params.layer_metal = lt.LayerInfo(1, 0)
+    pad.params.layer_opening = lt.LayerInfo(2, 0)
+
+    with pytest.raises(TypeError):
+        pad.params.layer_metal = '1/0'
+
     # TODO set defaults here
     TOP, layout = top_cell(lt)
     cell = pad.new_cell(layout)
