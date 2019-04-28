@@ -34,6 +34,15 @@ pad_array_count = PCellParameter(
     name='pad_array_count',
     type=TypeInt,
     description="Number of pads",
+    default=10
+)
+
+pad_array_pitch = PCellParameter(
+    name='pad_array_pitch',
+    type=TypeDouble,
+    description="Pad array pitch",
+    default=150,
+    unit='um'
 )
 
 origin = PCellParameter(
@@ -150,5 +159,22 @@ class DCPad(OrientedCell):
                     ey / 2, -ey, 'el_dc', cp.port_width)
 
         self.add_port(port)
+
+        return cell
+
+
+class DCPadArray(DCPad):
+    params = ParamContainer(pad_array_count,
+                            pad_array_pitch)
+
+    def draw(self, cell):
+        lt = self.backend
+        cp = self.params
+        origin, ex, _ = self.origin_ex_ey()
+
+        for i in range(cp.pad_array_count):
+            dcpad = DCPad(name=f'pad_{i}', backend=lt, **cp)
+            dc_ports = dcpad.place_cell(cell, origin + cp.pad_array_pitch * i * ex)
+            self.add_port(dc_ports['el0'].rename(f'el_{i}'))
 
         return cell

@@ -47,15 +47,26 @@ def pyaPoint__truediv__(self, dividend):
     return self.__class__(self.x / dividend, self.y / dividend)
 
 
+def pyaPoint__deepcopy__(self, memo):
+    new_point = self.__class__(self.x, self.y)
+    return new_point
+
+
 def pyaPoint_norm(self):
     """ This implements the L2 norm """
     return sqrt(self.x ** 2 + self.y ** 2)
+
+
+def pyaPoint_normalize(self):
+    return self / self.norm()
 
 
 for klass in PointLike:
     klass.__rmul__ = pyaPoint__rmul__
     klass.__mul__ = pyaPoint__mul__
     klass.__truediv__ = pyaPoint__truediv__
+    klass.__deepcopy__ = pyaPoint__deepcopy__
+    klass.normalize = pyaPoint_normalize
     klass.norm = pyaPoint_norm
 
 import sys

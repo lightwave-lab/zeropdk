@@ -1,6 +1,11 @@
 import klayout.db as pya
 from . import extend  # noqa
-from zeropdk.abstract.backend import Point, Vector, LayerInfo
+from zeropdk.abstract.backend import \
+    Point, \
+    Vector, \
+    Trans, \
+    Cell, \
+    LayerInfo
 
 # This is a temporary API implementation. Ideally, we will define
 # all these classes in an abstract way and wrap klayout's classes
@@ -21,15 +26,21 @@ Point = pya.DPoint
 Vector.register(pya.DVector)
 Vector = pya.DVector
 
+Trans.register(pya.DTrans)
+Trans = pya.DTrans
+
 Edge = pya.DEdge
 
 Polygon = pya.DPolygon
 SimplePolygon = pya.DSimplePolygon
 
+Path = pya.DPath
+
 # used in backend.EdgeProcessor().simple_merge_p2p
 
 EdgeProcessor = pya.EdgeProcessor
 
+Cell.register(pya.Cell)
 Cell = pya.Cell
 
 
@@ -83,3 +94,5 @@ Layout.read_cell = layout_read_cell
 
 LayerInfo.register(pya.LayerInfo)
 LayerInfo = pya.LayerInfo
+
+Text = pya.DText

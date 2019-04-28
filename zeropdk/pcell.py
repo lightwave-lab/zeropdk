@@ -1,10 +1,11 @@
 import os
-from copy import copy
+from copy import copy, deepcopy
 from typing import Dict, List, Tuple, Any
 import logging
 from collections.abc import Mapping
-from zeropdk.abstract.backend import Point, Vector, LayerInfo
-
+from zeropdk.abstract.backend import Point, Vector, LayerInfo, Cell
+from zeropdk.layout.polygons import rectangle
+from zeropdk.layout.geometry import rotate90
 
 logger = logging.getLogger()
 
@@ -157,7 +158,7 @@ class ParamContainer(Mapping):
         return self.__getattr__(key)
 
     def __iter__(self):
-        values_dict = {p.name: p.value for p in self._container.values()}
+        values_dict = {p.name: p.default for p in self._container.values()}
         values_dict.update(self._current_values)
         return iter(values_dict)
 
@@ -180,13 +181,42 @@ class Port(object):
         return self
 
     def __repr__(self):
-        return f"{self.name}, {self.position}"
+        return f"({self.name}, {self.position})"
+
+    def draw(self, backend, cell, layer):
+        ''' Draws this port on cell's layer using backend'''
+        lt = backend  # e.g. klayout.db
+        if self.name.startswith("el"):
+            pin_length = self.width
+        else:
+            # port is optical
+            pin_length = max(2, self.width / 10)
+
+        ex = self.direction.normalize()
+
+        # Place a Path around the port pointing towards its exit
+        port_path = lt.Path([self.position - 0.5 * pin_length * ex,
+                       self.position + 0.5 * pin_length * ex], self.width)
+        cell.shapes(layer).insert(port_path)
+        # pin_rectangle = rectangle(backend, self.position, self.width,
+        #                           pin_length, ex, ey)
+        # cell.shapes(layer).insert(pin_rectangle)
+
+        # Place a text object annotating the name of the port
+        cell.shapes(layer).insert(lt.Text(self.name, lt.Trans(
+            lt.Trans.R0, self.position.x, self.position.y), pin_length, 0))
+
+        return self
 
 
 class PCell:
 
     params: ParamContainer = ParamContainer()
     ports: Dict[str, Port] = {}
+    _cell: Cell = None
+
+    def draw(self, cell):
+        raise NotImplementedError()
 
     def __new__(cls, *args, **kwargs):
         # The purpose of this method is to make sure that the parameters
@@ -216,18 +246,18 @@ class PCell:
         self.set_param(**params)
 
     def set_param(self, **params):
-        for name, value in params.items():
-            if name not in self.params:
-                raise RuntimeError("'{name}' is an invalid param.".format(name=name))
-            setattr(self.params, name, value)
+        for name, p_value in params.items():
+            if name in self.params:
+                setattr(self.params, name, p_value)
+            else:
+                logger.debug("Ignoring '{name}' parameter in {klass}."
+                    .format(name=name, klass=self.__class__.__qualname__))
 
     def new_cell(self, layout):
-        # Here, the hierarchy is duplicated
-        cell = layout.create_cell(self.name)
-        return self.draw(cell)
-
-    def draw(self, cell):
-        raise NotImplementedError()
+        # A cell is only created once per instance.
+        if self._cell is None:
+            self._cell = layout.create_cell(self.name)
+        return self.draw(self._cell)
 
     def add_port(self, port: Port):
         self.ports[port.name] = port
@@ -241,6 +271,53 @@ class PCell:
                 - access with cp.name instead of cp['name']
         '''
         return self.params
+
+    def place_cell(self, parent_cell, placement_origin, params=None,
+                   relative_to=None, transform_into=False):
+        """ Places this pcell into parent_cell and return ports with
+            updated position and orientation.
+        Args:
+            parent_cell: cell to place into
+            placement_origin: pya.Point object to be used as origin
+            relative_to: port name
+                the cell is placed so that the port is located at placement_origin
+            transform_into:
+                if used with relative_into, transform the cell's coordinate system
+                so that its origin is in the given port.
+
+        Returns:
+            ports(dict):
+                key:port.name,
+                value: geometry.Port with positions relative to parent_cell's origin
+        """
+        layout = parent_cell.layout()
+        lt = self.backend
+        cell = self.new_cell(layout)
+        ports = self.ports
+
+        # Compute new placement origin and port_offset
+
+        # offset = lt.Vector(0, 0)
+        port_offset = placement_origin
+        if relative_to is not None:
+            offset = ports[relative_to].position
+            port_offset = placement_origin - offset
+            if transform_into:
+                # print(type(pcell))
+                offset_transform = lt.Trans(lt.Trans.R0, -offset)
+                for instance in cell.each_inst():
+                    instance.transform(offset_transform)
+                cell.transform_into(offset_transform)
+            else:
+                placement_origin = placement_origin - offset
+
+        parent_cell.insert_cell(cell, placement_origin, 0)
+
+        new_ports = deepcopy(ports)
+        for port in new_ports.values():
+            port.position += port_offset
+
+        return new_ports
 
 
 def GDSCell(backend, cell_name, filename, gds_dir):

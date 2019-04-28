@@ -24,5 +24,13 @@ class Vector(Point):
     pass
 
 
+class Trans(ABC):
+    pass
+
+
+class Cell(ABC):
+    pass
+
+
 class LayerInfo(ABC):
     pass

@@ -23,8 +23,8 @@ def rectangle(backend, center, width, height, ex, ey):
 
     Args:
         center: pya.DPoint (um units)
-        width: float (um units)
-        height: float (um unit)
+        width (x axis): float (um units)
+        height (y axis): float (um unit)
         ex: orientation of x axis
         ey: orientation of y axis
     """
