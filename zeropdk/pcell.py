@@ -4,7 +4,6 @@ from typing import Dict, List, Tuple, Any
 import logging
 from collections.abc import Mapping
 from zeropdk.abstract.backend import Point, Vector, LayerInfo, Cell
-from zeropdk.layout.polygons import rectangle
 from zeropdk.layout.geometry import rotate90
 
 logger = logging.getLogger()
@@ -192,7 +191,7 @@ class Port(object):
             # port is optical
             pin_length = max(2, self.width / 10)
 
-        ex = self.direction.normalize()
+        ex = self.direction
 
         # Place a Path around the port pointing towards its exit
         port_path = lt.Path([self.position - 0.5 * pin_length * ex,

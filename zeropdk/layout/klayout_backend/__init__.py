@@ -17,8 +17,10 @@ from zeropdk.abstract.backend import \
 # Another example. A cell needs a layout. So in KLayout, cell.layout()
 # returns a pya.Layout object.
 
-# Adapting KLayout's Point implementation
+# Adapting KLayout's Point initializer
+# This way, we can instantiate Vector(point)
 pya.DPoint.__init__ = Point.__init__
+pya.DVector.__init__ = Point.__init__
 
 Point.register(pya.DPoint)
 Point = pya.DPoint

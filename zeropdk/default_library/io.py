@@ -52,36 +52,19 @@ origin = PCellParameter(
     default=Point(0, 0),
 )
 
-angle_ex = PCellParameter(
-    name='angle_ex',
-    type=TypeDouble,
-    description="Angle of ex",
-    default=0,
-    unit='deg'
+ex = PCellParameter(
+    name='ex',
+    type=TypePoint,
+    description="x-axis unit vector",
+    default=Point(1, 0)
 )
 
-angle_ey = PCellParameter(
-    name='angle_ey',
-    type=TypeDouble,
-    description="Angle of ey",
-    default=90,
-    unit='deg'
+ey = PCellParameter(
+    name='ey',
+    type=TypePoint,
+    description="y-axis unit vector",
+    default=Point(0, 1)
 )
-
-mag_x = PCellParameter(
-    name='mag_x',
-    type=TypeDouble,
-    description="Magnitude of ex",
-    default=1
-)
-
-mag_y = PCellParameter(
-    name='mag_y',
-    type=TypeDouble,
-    description="Magnitude of ey",
-    default=1
-)
-
 layer_metal = PCellParameter(
     name='layer_metal',
     type=TypeLayer,
@@ -98,25 +81,19 @@ layer_opening = PCellParameter(
 class OrientedCell(PCell):
     """ A standard cell that has the following parameters:
     - origin: Point
-    - angle_ex: angle of ex
-    - angle_ey: angle of ey
-    - mag_x: double
-    - mag_y: double
+    - ex: unit vector of x axis
+    - ey: unit vector of y axis
     """
 
     params = ParamContainer(origin,
-                            angle_ex,
-                            angle_ey,
-                            mag_x,
-                            mag_y)
+                            ex,
+                            ey)
 
     def origin_ex_ey(self):
         lt = self.backend
         origin = lt.Point(self.params['origin'])
-        angle_ex_rad = self.params.angle_ex * pi / 180
-        angle_ey_rad = self.params.angle_ey * pi / 180
-        ex = rotate(lt.Vector(self.params['mag_x'], 0), angle_ex_rad)
-        ey = rotate(lt.Vector(self.params['mag_y'], 0), angle_ey_rad)
+        ex = lt.Vector(self.params.ex)
+        ey = lt.Vector(self.params.ey)
         return origin, ex, ey
 
 
