@@ -224,3 +224,27 @@ def waveguide_polygon(backend, points_list, width, dbu, smooth=True):
     wg_polygon = backend.SimplePolygon(polygon_dpoints)
     wg_polygon.compress(True)
     return wg_polygon
+
+
+def layout_waveguide(cell, layer, points_list, width, smooth=False):
+    """ Lays out a waveguide (or trace) with a certain width along given points.
+
+    This is very useful for laying out Bezier curves with or without adiabatic tapers.
+
+    Args:
+        cell: cell to place into
+        layer: layer to place into. It is done with cell.shapes(layer).insert(pya.Polygon)
+        points_list: list of pya.DPoint (at least 2 points)
+        width (microns): constant or list. If list, then it has to have the same length as points
+        smooth: tries to smooth final polygons to avoid very sharp edges (greater than 130 deg)
+
+    """
+
+    dbu = cell.layout().dbu
+
+    from zeropdk.layout import klayout_backend
+
+    dpolygon = waveguide_polygon(klayout_backend, points_list, width, dbu, smooth=smooth)
+    dpolygon.compress(True)
+    dpolygon.layout(cell, layer)
+    return dpolygon

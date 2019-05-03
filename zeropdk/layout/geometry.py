@@ -66,3 +66,83 @@ def curve_length(curve, t0=0, t1=1):
             return ds.sum()
         else:
             return 0
+
+
+def manhattan_intersection(vertical_point, horizontal_point, ex):
+    """ returns the point that intersects vertical_point's x coordinate
+        and horizontal_point's y coordinate.
+
+        Args: ex (Vector/Point): orientation of x axis.
+
+        Caveat: this formula only works for orthogonal coordinate systems.
+    """
+    ey = rotate90(ex)
+    return vertical_point * ex * ex + horizontal_point * ey * ey
+
+
+def find_Z_orientation(P0, P1, ex):
+    """Compute the orientation of Point P0 against Point P1
+    P1 is assumed to be above P0.
+
+    Args: ex (Vector/Point): orientation of x axis.
+
+    Returns:
+        0 for Z-oriented and 1 for S-oriented
+
+    """
+    if P1 * ex > P0 * ex:
+        orient = 0  # Z-oriented
+    else:
+        orient = 1  # S-oriented
+    return orient
+
+
+def cluster_ports(ports_from, ports_to, ex):
+    """Given two (equal length) port arrays, divide them into clusters
+    based on the connection orientation. The idea is that each cluster
+    can be routed independently with an array of Z or S traces that don't
+    touch each other.
+
+    Args: ex (Vector/Point): orientation of the axis along with the ports
+    are placed.
+
+    TODO document more.
+
+    Returns:
+        an array of k 2-tuples (port_pair_list, orientation),
+            where k is the number of clusters,
+            port_pair list an array of (p0, p1),
+            and orientation is 0 for Z and 1 for S
+    """
+    orient_old = None
+    port_cluster = []
+    port_clusters = []
+    # sort the arrays first
+    proj_ex = lambda p: p.position * ex
+    ports_from = sorted(ports_from, key=proj_ex)
+    ports_to = sorted(ports_to, key=proj_ex)
+    for port_from, port_to in zip(ports_from, ports_to):
+        new_cluster = False
+        orient_new = find_Z_orientation(port_from.position, port_to.position, ex)
+        # first pair
+        if orient_old is None:
+            port_cluster.append((port_from, port_to))
+        # the rest pairs
+        elif orient_new == orient_old:
+            # if the ports are too spaced apart, initiate new cluster
+            right_port = min(port_from, port_to, key=proj_ex)
+            left_port = max(port_cluster[-1], key=proj_ex)
+            if proj_ex(right_port) - right_port.width > proj_ex(left_port) + left_port.width:
+                new_cluster = True
+            else:
+                port_cluster.append((port_from, port_to))
+        else:
+            new_cluster = True
+
+        if new_cluster:
+            port_clusters.append((port_cluster, orient_old))
+            port_cluster = []
+            port_cluster.append((port_from, port_to))
+        orient_old = orient_new
+    port_clusters.append((port_cluster, orient_old))
+    return port_clusters

@@ -203,7 +203,7 @@ class Port(object):
 
         # Place a text object annotating the name of the port
         cell.shapes(layer).insert(lt.Text(self.name, lt.Trans(
-            lt.Trans.R0, self.position.x, self.position.y), pin_length, 0))
+            lt.Trans.R0, self.position.x, self.position.y), min(pin_length, 20), 0))
 
         return self
 

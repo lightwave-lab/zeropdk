@@ -3,8 +3,6 @@ from zeropdk.pcell import PCell, PCellParameter, \
     Port, ParamContainer
 from zeropdk.layout import insert_shape, Point
 from zeropdk.layout.polygons import rectangle
-from zeropdk.layout.geometry import rotate
-from math import pi
 
 pad_width = PCellParameter(
     name='pad_width',
