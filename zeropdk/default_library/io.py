@@ -1,8 +1,10 @@
 from zeropdk.pcell import PCell, PCellParameter, \
     TypeDouble, TypeInt, TypeLayer, TypePoint, \
     Port, ParamContainer
-from zeropdk.layout import insert_shape, Point
+from zeropdk.layout import insert_shape
 from zeropdk.layout.polygons import rectangle
+
+from klayout.db import DPoint
 
 pad_width = PCellParameter(
     name='pad_width',
@@ -47,21 +49,21 @@ origin = PCellParameter(
     name='origin',
     type=TypePoint,
     description="Origin",
-    default=Point(0, 0),
+    default=DPoint(0, 0),
 )
 
 ex = PCellParameter(
     name='ex',
     type=TypePoint,
     description="x-axis unit vector",
-    default=Point(1, 0)
+    default=DPoint(1, 0)
 )
 
 ey = PCellParameter(
     name='ey',
     type=TypePoint,
     description="y-axis unit vector",
-    default=Point(0, 1)
+    default=DPoint(0, 1)
 )
 layer_metal = PCellParameter(
     name='layer_metal',
@@ -89,9 +91,9 @@ class OrientedCell(PCell):
 
     def origin_ex_ey(self):
         lt = self.backend
-        origin = lt.Point(self.params['origin'])
-        ex = lt.Vector(self.params.ex)
-        ey = lt.Vector(self.params.ey)
+        origin = lt.DPoint(self.params['origin'])
+        ex = lt.DVector(self.params.ex)
+        ey = lt.DVector(self.params.ey)
         return origin, ex, ey
 
 

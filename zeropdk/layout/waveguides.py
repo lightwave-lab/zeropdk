@@ -15,33 +15,27 @@ from numpy import cos, sin, pi, sqrt
 from functools import reduce
 from zeropdk.layout.geometry import curve_length
 
+import klayout.db as pya
+
 debug = False
 
 
-def waveguide_polygon(backend, points_list, width, dbu, smooth=True):
-    """ Returns a polygon outlining a waveguide (or trace) with a
-    certain width along given points.
-
-    This is very useful for laying out Bezier curves with or without
-    adiabatic tapers.
-
+def waveguide_dpolygon(points_list, width, dbu, smooth=True):
+    """ Returns a polygon outlining a waveguide.
 
     This was updated over many iterations of failure. It can be used for both
     smooth optical waveguides or DC metal traces with corners. It is better
     than klayout's Path because it can have varying width.
 
     Args:
-        points_list: list of backend.Point (at least 2 points)
-        width (microns): constant or list. If list, then it has to have
-            the same length as points
+        points_list: list of pya.DPoint (at least 2 points)
+        width (microns): constant or list. If list, then it has to have the same length as points
         dbu: dbu: typically 0.001, only used for accuracy calculations.
-        smooth: tries to smooth final polygons to avoid very sharp edges
-            (greater than 130 deg)
+        smooth: tries to smooth final polygons to avoid very sharp edges (greater than 130 deg)
     Returns:
         polygon DPoints
 
     """
-
     if len(points_list) < 2:
         raise NotImplementedError("ERROR: points_list too short")
         return
@@ -97,9 +91,9 @@ def waveguide_polygon(backend, points_list, width, dbu, smooth=True):
     delta = next_point - first_point
     theta = np.arctan2(delta.y, delta.x)
     first_high_point = first_point + 0.5 * first_width * \
-        backend.Point(cos(theta + pi / 2), sin(theta + pi / 2))
+        pya.DPoint(cos(theta + pi / 2), sin(theta + pi / 2))
     first_low_point = first_point + 0.5 * first_width * \
-        backend.Point(cos(theta - pi / 2), sin(theta - pi / 2))
+        pya.DPoint(cos(theta - pi / 2), sin(theta - pi / 2))
     points_high.append(first_high_point)
     points_low.append(first_low_point)
 
@@ -114,30 +108,30 @@ def waveguide_polygon(backend, points_list, width, dbu, smooth=True):
         theta_next = np.arctan2(delta_next.y, delta_next.x)
 
         next_point_high = (next_point + 0.5 * next_width *
-                           backend.Point(cos(theta_next + pi / 2), sin(theta_next + pi / 2)))
+                           pya.DPoint(cos(theta_next + pi / 2), sin(theta_next + pi / 2)))
         next_point_low = (next_point + 0.5 * next_width *
-                          backend.Point(cos(theta_next - pi / 2), sin(theta_next - pi / 2)))
+                          pya.DPoint(cos(theta_next - pi / 2), sin(theta_next - pi / 2)))
 
         forward_point_high = (point + 0.5 * width *
-                              backend.Point(cos(theta_next + pi / 2), sin(theta_next + pi / 2)))
+                              pya.DPoint(cos(theta_next + pi / 2), sin(theta_next + pi / 2)))
         forward_point_low = (point + 0.5 * width *
-                             backend.Point(cos(theta_next - pi / 2), sin(theta_next - pi / 2)))
+                             pya.DPoint(cos(theta_next - pi / 2), sin(theta_next - pi / 2)))
 
         prev_point_high = (prev_point + 0.5 * prev_width *
-                           backend.Point(cos(theta_prev + pi / 2), sin(theta_prev + pi / 2)))
+                           pya.DPoint(cos(theta_prev + pi / 2), sin(theta_prev + pi / 2)))
         prev_point_low = (prev_point + 0.5 * prev_width *
-                          backend.Point(cos(theta_prev - pi / 2), sin(theta_prev - pi / 2)))
+                          pya.DPoint(cos(theta_prev - pi / 2), sin(theta_prev - pi / 2)))
 
         backward_point_high = (point + 0.5 * width *
-                               backend.Point(cos(theta_prev + pi / 2), sin(theta_prev + pi / 2)))
+                               pya.DPoint(cos(theta_prev + pi / 2), sin(theta_prev + pi / 2)))
         backward_point_low = (point + 0.5 * width *
-                              backend.Point(cos(theta_prev - pi / 2), sin(theta_prev - pi / 2)))
+                              pya.DPoint(cos(theta_prev - pi / 2), sin(theta_prev - pi / 2)))
 
         fix_angle = lambda theta: ((theta + pi) % (2 * pi)) - pi
 
         # High point decision
-        next_high_edge = backend.Edge(forward_point_high, next_point_high)
-        prev_high_edge = backend.Edge(backward_point_high, prev_point_high)
+        next_high_edge = pya.DEdge(forward_point_high, next_point_high)
+        prev_high_edge = pya.DEdge(backward_point_high, prev_point_high)
 
         if next_high_edge.crossed_by(prev_high_edge):
             intersect_point = next_high_edge.crossing_point(prev_high_edge)
@@ -151,8 +145,8 @@ def waveguide_polygon(backend, points_list, width, dbu, smooth=True):
                 points_high.append((backward_point_high + forward_point_high) * 0.5)
 
         # Low point decision
-        next_low_edge = backend.Edge(forward_point_low, next_point_low)
-        prev_low_edge = backend.Edge(backward_point_low, prev_point_low)
+        next_low_edge = pya.DEdge(forward_point_low, next_point_low)
+        prev_low_edge = pya.DEdge(backward_point_low, prev_point_low)
 
         if next_low_edge.crossed_by(prev_low_edge):
             intersect_point = next_low_edge.crossing_point(prev_low_edge)
@@ -170,9 +164,9 @@ def waveguide_polygon(backend, points_list, width, dbu, smooth=True):
     delta = last_point - point
     theta = np.arctan2(delta.y, delta.x)
     final_high_point = last_point + 0.5 * last_width * \
-        backend.Point(cos(theta + pi / 2), sin(theta + pi / 2))
+        pya.DPoint(cos(theta + pi / 2), sin(theta + pi / 2))
     final_low_point = last_point + 0.5 * last_width * \
-        backend.Point(cos(theta - pi / 2), sin(theta - pi / 2))
+        pya.DPoint(cos(theta - pi / 2), sin(theta - pi / 2))
     if (final_high_point - points_high[-1]) * delta > 0:
         points_high.append(final_high_point)
     if (final_low_point - points_low[-1]) * delta > 0:
@@ -221,9 +215,7 @@ def waveguide_polygon(backend, points_list, width, dbu, smooth=True):
     # polygon_dpoints = points_high + list(reversed(points_low))
     # polygon_dpoints = list(reduce(smooth_append, polygon_dpoints, list()))
     polygon_dpoints = smooth_points_high + list(reversed(smooth_points_low))
-    wg_polygon = backend.SimplePolygon(polygon_dpoints)
-    wg_polygon.compress(True)
-    return wg_polygon
+    return pya.DSimplePolygon(polygon_dpoints)
 
 
 def layout_waveguide(cell, layer, points_list, width, smooth=False):
@@ -242,9 +234,7 @@ def layout_waveguide(cell, layer, points_list, width, smooth=False):
 
     dbu = cell.layout().dbu
 
-    from zeropdk.layout import klayout_backend
-
-    dpolygon = waveguide_polygon(klayout_backend, points_list, width, dbu, smooth=smooth)
+    dpolygon = waveguide_dpolygon(points_list, width, dbu, smooth=smooth)
     dpolygon.compress(True)
     dpolygon.layout(cell, layer)
     return dpolygon

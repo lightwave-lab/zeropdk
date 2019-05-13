@@ -1,7 +1,8 @@
-import pytest
 from ..context import zeropdk  # noqa
-from zeropdk.layout import backends
 
+import klayout.db as kdb
+
+lt = kdb
 
 from zeropdk.tech import Tech
 
@@ -13,7 +14,6 @@ class ExampleTech(Tech):
         self.add_layer('layer_opening', '1/0')
 
 
-@pytest.mark.parametrize('lt', backends)
-def test_layers(lt):
+def test_layers():
     t = ExampleTech(lt)
     assert t.layers['layer_metal'] == lt.LayerInfo(1, 0, 'layer_metal')

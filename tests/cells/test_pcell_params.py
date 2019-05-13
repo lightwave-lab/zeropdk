@@ -1,7 +1,8 @@
 import pytest
 from ..context import zeropdk
 from zeropdk.pcell import ParamContainer, PCellParameter
-from zeropdk.layout import Point
+
+from klayout.db import DPoint
 
 
 def test_basic_usage():
@@ -23,8 +24,8 @@ def test_basic_usage():
     with pytest.raises(TypeError, match="Cannot set 'apple' to 'one'"):
         pc.apple = 'one'
 
-    pc.add_param(PCellParameter(name='strawberry', default=Point(0, 0)))
-    assert type(pc.strawberry) == Point
+    pc.add_param(PCellParameter(name='strawberry', default=DPoint(0, 0)))
+    assert type(pc.strawberry) == DPoint
 
     with pytest.raises(TypeError, match="Cannot set 'strawberry' to 'test'"):
         pc.strawberry = 'test'

@@ -61,7 +61,22 @@ def pyaPoint_normalize(self):
     return self / self.norm()
 
 
+def pyaPoint__init__(self, *args):
+    if len(args) == 1:
+        p, = args
+        try:
+            self.x = p.x
+            self.y = p.y
+        except:
+            raise ValueError('Cannot understand {}'.format(p))
+    elif len(args) == 2:
+        self.x, self.y = args
+    else:
+        raise ValueError('Unknown constructor')
+
+
 for klass in PointLike:
+    klass.__init__ = pyaPoint__init__
     klass.__rmul__ = pyaPoint__rmul__
     klass.__mul__ = pyaPoint__mul__
     klass.__truediv__ = pyaPoint__truediv__

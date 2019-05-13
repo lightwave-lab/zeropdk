@@ -3,17 +3,18 @@ from copy import copy, deepcopy
 from typing import Dict, List, Tuple, Any
 import logging
 from collections.abc import Mapping
-from zeropdk.abstract.backend import Point, Vector, LayerInfo, Cell
 from zeropdk.layout.geometry import rotate90
+
+import klayout.db as kdb
 
 logger = logging.getLogger()
 
 TypeDouble = float
 TypeInt = int
 TypeList = list
-TypePoint = Point
-TypeVector = Vector
-TypeLayer = LayerInfo
+TypePoint = kdb.DPoint
+TypeVector = kdb.DVector
+TypeLayer = kdb.LayerInfo
 
 # I like using 'type' as argument names, but that conflicts with
 # python's keyword type
@@ -194,7 +195,7 @@ class Port(object):
         ex = self.direction
 
         # Place a Path around the port pointing towards its exit
-        port_path = lt.Path([self.position - 0.5 * pin_length * ex,
+        port_path = lt.DPath([self.position - 0.5 * pin_length * ex,
                        self.position + 0.5 * pin_length * ex], self.width)
         cell.shapes(layer).insert(port_path)
         # pin_rectangle = rectangle(backend, self.position, self.width,
@@ -202,8 +203,8 @@ class Port(object):
         # cell.shapes(layer).insert(pin_rectangle)
 
         # Place a text object annotating the name of the port
-        cell.shapes(layer).insert(lt.Text(self.name, lt.Trans(
-            lt.Trans.R0, self.position.x, self.position.y), min(pin_length, 20), 0))
+        cell.shapes(layer).insert(lt.DText(self.name, lt.DTrans(
+            lt.DTrans.R0, self.position.x, self.position.y), min(pin_length, 20), 0))
 
         return self
 
@@ -212,7 +213,7 @@ class PCell:
 
     params: ParamContainer = ParamContainer()
     ports: Dict[str, Port] = {}
-    _cell: Cell = None
+    _cell: kdb.Cell = None
 
     def draw(self, cell):
         raise NotImplementedError()
@@ -254,8 +255,10 @@ class PCell:
 
     def new_cell(self, layout):
         # A cell is only created once per instance.
-        if self._cell is None:
-            self._cell = layout.create_cell(self.name)
+        if self._cell is not None:
+            return self._cell
+
+        self._cell = layout.create_cell(self.name)
         return self.draw(self._cell)
 
     def add_port(self, port: Port):
@@ -296,14 +299,14 @@ class PCell:
 
         # Compute new placement origin and port_offset
 
-        # offset = lt.Vector(0, 0)
+        # offset = lt.DVector(0, 0)
         port_offset = placement_origin
         if relative_to is not None:
             offset = ports[relative_to].position
             port_offset = placement_origin - offset
             if transform_into:
                 # print(type(pcell))
-                offset_transform = lt.Trans(lt.Trans.R0, -offset)
+                offset_transform = lt.DTrans(lt.DTrans.R0, -offset)
                 for instance in cell.each_inst():
                     instance.transform(offset_transform)
                 cell.transform_into(offset_transform)
@@ -353,7 +356,7 @@ def GDSCell(backend, cell_name, filename, gds_dir):
                 gdscell = layout.read_cell(cell_name, filepath)
             cell_cache[(cell_name, filepath)] = gdscell
 
-            origin = lt.Point(0, 0)
+            origin = lt.DPoint(0, 0)
             angle = 0
 
             cell.insert_cell(gdscell, origin, angle)

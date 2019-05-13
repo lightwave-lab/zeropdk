@@ -1,10 +1,13 @@
 import pytest
 import os
 from ..context import zeropdk  # noqa
-from zeropdk.layout import backends
 from zeropdk.pcell import PCell, PCellParameter, ParamContainer, \
     TypeDouble, TypeInt
 from zeropdk.pcell import GDSCell
+
+import klayout.db as kdb
+
+lt = kdb
 
 pad_size = PCellParameter(
     name='pad_size',
@@ -29,8 +32,7 @@ class PadArray(Pad):
     params = ParamContainer(pad_array_count)
 
 
-@pytest.mark.parametrize('lt', backends)
-def test_pcell_inheritance(lt):
+def test_pcell_inheritance():
     pad = Pad(name='testname', backend=lt)
     pad_array = PadArray(name='testname', backend=lt)
     assert 'pad_size' in pad_array.params
@@ -56,14 +58,13 @@ def top_cell():
     return _top_cell
 
 
-@pytest.mark.parametrize('lt', backends)
-def test_gdscell(lt, top_cell):
+def test_gdscell(top_cell):
 
     gds_dir = gdslibpath
     princeton_logo = GDSCell(lt, 'princeton_logo',
         'princeton_logo_simple.gds', gds_dir)(name='xyz', backend=lt)
     TOP, layout = top_cell(lt)
-    ex = lt.Point(1, 0)
+    ex = lt.DPoint(1, 0)
     plogo = princeton_logo.new_cell(layout)
     size = (plogo.bbox().p2 - plogo.bbox().p1).norm()
     for i in range(10):
@@ -83,16 +84,17 @@ def test_gdscell(lt, top_cell):
     assert cell_count == 1
 
 
-@pytest.mark.parametrize('lt', backends)
-def test_gdscellcache(lt, top_cell):
+def test_gdscellcache(top_cell):
 
     gds_dir = gdslibpath
     princeton_logo = GDSCell(lt, 'princeton_logo',
         'princeton_logo_simple.gds', gds_dir)(name='xyz', backend=lt)
     TOP, layout = top_cell(lt)
-    ex = lt.Point(1, 0)
+    ex = lt.DPoint(1, 0)
 
     for i in range(10):
+        # The new_cell method does not create new cells,
+        # it returns the same previously instantiated cell
         plogo = princeton_logo.new_cell(layout)
         size = (plogo.bbox().p2 - plogo.bbox().p1).norm()
         angle = 10 * i
@@ -104,11 +106,19 @@ def test_gdscellcache(lt, top_cell):
     # gdscell loaded from a file.
     TOP.write('tests/tmp/princeton_logo_testcache.gds')
 
+    # ony one cell "xyz" exists
     cell_count = 0
     for cell in layout.each_cell():
         if cell.name.startswith('xyz'):
             cell_count += 1
-    assert cell_count == 10
+    assert cell_count == 1
+
+    # 10 instances of cell "xyz" exists
+    inst_count = 0
+    for inst in TOP.each_inst():
+        if inst.cell.name.startswith('xyz'):
+            inst_count += 1
+    assert inst_count == 10
 
     cell_count = 0
     for cell in layout.each_cell():

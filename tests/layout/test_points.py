@@ -2,7 +2,10 @@ import random
 import numpy as np
 import pytest
 from ..context import zeropdk  # noqa
-from zeropdk.layout import backends
+
+import klayout.db as kdb
+
+lt = kdb
 
 
 def random_point(Point, a=-10, b=10):
@@ -15,8 +18,7 @@ def random_point(Point, a=-10, b=10):
     return p
 
 
-@pytest.mark.parametrize('lt', backends)
-def test_add_sub(lt):
+def test_add_sub():
     p1 = random_point(lt.Point)
     p2 = random_point(lt.Point)
 
@@ -34,8 +36,7 @@ def test_add_sub(lt):
     assert p2 == (sump + diffp) / 2
 
 
-@pytest.mark.parametrize('lt', backends)
-def test_mul(lt):
+def test_mul():
     p_classes = (lt.Point, lt.Vector)
 
     for p_class in p_classes:
@@ -49,8 +50,7 @@ def test_mul(lt):
         assert p3.y == p1.y * 2
 
 
-@pytest.mark.parametrize('lt', backends)
-def test_numpy(lt):
+def test_numpy():
     t = np.arange(3)
     ex = lt.Point(1, 0)
 

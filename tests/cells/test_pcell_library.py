@@ -1,9 +1,10 @@
 import pytest
 from ..context import zeropdk  # noqa
 from zeropdk.default_library import io
-from zeropdk.layout import backends
-from zeropdk.abstract.backend import Point
 
+import klayout.db as kdb
+
+lt = kdb
 
 DCPad = io.DCPad
 
@@ -19,18 +20,18 @@ def top_cell():
     return _top_cell
 
 
-@pytest.mark.parametrize('lt', backends)
-def test_pad_pcell(lt, top_cell):
+def test_pad_pcell(top_cell):
     pad = DCPad(name='testname', backend=lt)
     pad.params.layer_metal = lt.LayerInfo(1, 0)
     pad.params.layer_opening = lt.LayerInfo(2, 0)
 
-    with pytest.raises(TypeError):
-        pad.params.layer_metal = '1/0'
+    # This will get automatically converted to LayerInfo
+    # No Error
+    pad.params.layer_metal = '1/0'
 
     # TODO set defaults here
     TOP, layout = top_cell(lt)
     cell = pad.new_cell(layout)
-    origin, angle = Point(0, 0), 0
+    origin, angle = kdb.DPoint(0, 0), 0
     TOP.insert_cell(cell, origin, angle)
     TOP.write('tests/tmp/pad.gds')

@@ -13,7 +13,7 @@ def box(backend, point1, point3, ex, ey):
     point2 = project(point3 - point1, ey, ex) * ey + point1
     point4 = point1 + point3 - point2
 
-    return backend.SimplePolygon([point1, point2, point3, point4])
+    return backend.DSimplePolygon([point1, point2, point3, point4])
 
 
 def rectangle(backend, center, width, height, ex, ey):

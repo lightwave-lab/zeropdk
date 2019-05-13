@@ -1,17 +1,18 @@
 import random
 import pytest
 from ..context import zeropdk  # noqa
-from zeropdk.layout import backends
 from zeropdk.layout.polygons import square
+import klayout.db as kdb
+
+lt = kdb
 
 
-@pytest.mark.parametrize('lt', backends)
-def test_square(lt):
+def test_square():
     a, b = 0, 10
-    ex = lt.Vector(1, 0)
-    ey = lt.Vector(0, 1)
+    ex = lt.DVector(1, 0)
+    ey = lt.DVector(0, 1)
     size = random.uniform(a, b)
-    origin = lt.Point(0, 0)
+    origin = lt.DPoint(0, 0)
     sq = square(lt, origin, size, ex, ey)
 
     # This is true for any rectangle
