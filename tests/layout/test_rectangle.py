@@ -4,16 +4,14 @@ from ..context import zeropdk  # noqa
 from zeropdk.layout.polygons import square
 import klayout.db as kdb
 
-lt = kdb
-
 
 def test_square():
     a, b = 0, 10
-    ex = lt.DVector(1, 0)
-    ey = lt.DVector(0, 1)
+    ex = kdb.DVector(1, 0)
+    ey = kdb.DVector(0, 1)
     size = random.uniform(a, b)
-    origin = lt.DPoint(0, 0)
-    sq = square(lt, origin, size, ex, ey)
+    origin = kdb.DPoint(0, 0)
+    sq = square(origin, size, ex, ey)
 
     # This is true for any rectangle
     p1, p2, p3, p4 = sq.each_point()

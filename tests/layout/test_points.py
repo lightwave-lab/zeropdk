@@ -1,11 +1,8 @@
 import random
 import numpy as np
-import pytest
 from ..context import zeropdk  # noqa
 
 import klayout.db as kdb
-
-lt = kdb
 
 
 def random_point(Point, a=-10, b=10):
@@ -19,29 +16,29 @@ def random_point(Point, a=-10, b=10):
 
 
 def test_add_sub():
-    p1 = random_point(lt.Point)
-    p2 = random_point(lt.Point)
+    p1 = random_point(kdb.Point)
+    p2 = random_point(kdb.Point)
 
     sump = p1 + p2
     assert sump.x == p1.x + p2.x
     assert sump.y == p1.y + p2.y
-    assert isinstance(sump, lt.Point)
+    assert isinstance(sump, kdb.Point)
 
     diffp = p2 - p1
     assert diffp.x == p2.x - p1.x
     assert diffp.y == p2.y - p1.y
-    assert isinstance(diffp, lt.Vector)
+    assert isinstance(diffp, kdb.Vector)
 
     assert p1 == (sump - diffp) / 2
     assert p2 == (sump + diffp) / 2
 
 
 def test_mul():
-    p_classes = (lt.Point, lt.Vector)
+    p_classes = (kdb.Point, kdb.Vector)
 
     for p_class in p_classes:
-        p1 = random_point(lt.Vector)
-        p2 = random_point(lt.Vector)
+        p1 = random_point(kdb.Vector)
+        p2 = random_point(kdb.Vector)
 
         assert p1 * p2 == p1.x * p2.x + p1.y * p2.y
 
@@ -52,7 +49,7 @@ def test_mul():
 
 def test_numpy():
     t = np.arange(3)
-    ex = lt.Point(1, 0)
+    ex = kdb.Point(1, 0)
 
     # Point should consume a numpy array and produce a np.array of points
     point_array = t * ex

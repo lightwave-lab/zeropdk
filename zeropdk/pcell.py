@@ -3,7 +3,6 @@ from copy import copy, deepcopy
 from typing import Dict, List, Tuple, Any
 import logging
 from collections.abc import Mapping
-from zeropdk.layout.geometry import rotate90
 
 import klayout.db as kdb
 
@@ -183,9 +182,8 @@ class Port(object):
     def __repr__(self):
         return f"({self.name}, {self.position})"
 
-    def draw(self, backend, cell, layer):
-        ''' Draws this port on cell's layer using backend'''
-        lt = backend  # e.g. klayout.db
+    def draw(self, cell, layer):
+        ''' Draws this port on cell's layer using klayout.db'''
         if self.name.startswith("el"):
             pin_length = self.width
         else:
@@ -195,16 +193,16 @@ class Port(object):
         ex = self.direction
 
         # Place a Path around the port pointing towards its exit
-        port_path = lt.DPath([self.position - 0.5 * pin_length * ex,
+        port_path = kdb.DPath([self.position - 0.5 * pin_length * ex,
                        self.position + 0.5 * pin_length * ex], self.width)
         cell.shapes(layer).insert(port_path)
-        # pin_rectangle = rectangle(backend, self.position, self.width,
+        # pin_rectangle = rectangle(self.position, self.width,
         #                           pin_length, ex, ey)
         # cell.shapes(layer).insert(pin_rectangle)
 
         # Place a text object annotating the name of the port
-        cell.shapes(layer).insert(lt.DText(self.name, lt.DTrans(
-            lt.DTrans.R0, self.position.x, self.position.y), min(pin_length, 20), 0))
+        cell.shapes(layer).insert(kdb.DText(self.name, kdb.DTrans(
+            kdb.DTrans.R0, self.position.x, self.position.y), min(pin_length, 20), 0))
 
         return self
 
@@ -240,9 +238,8 @@ class PCell:
 
         return obj
 
-    def __init__(self, *, name: str, backend: str, **params):
+    def __init__(self, *, name: str, **params):
         self.name = name
-        self.backend = backend
         self.set_param(**params)
 
     def set_param(self, **params):
@@ -293,20 +290,19 @@ class PCell:
                 value: geometry.Port with positions relative to parent_cell's origin
         """
         layout = parent_cell.layout()
-        lt = self.backend
         cell = self.new_cell(layout)
         ports = self.ports
 
         # Compute new placement origin and port_offset
 
-        # offset = lt.DVector(0, 0)
+        # offset = kdb.DVector(0, 0)
         port_offset = placement_origin
         if relative_to is not None:
             offset = ports[relative_to].position
             port_offset = placement_origin - offset
             if transform_into:
                 # print(type(pcell))
-                offset_transform = lt.DTrans(lt.DTrans.R0, -offset)
+                offset_transform = kdb.DTrans(kdb.DTrans.R0, -offset)
                 for instance in cell.each_inst():
                     instance.transform(offset_transform)
                 cell.transform_into(offset_transform)
@@ -322,10 +318,9 @@ class PCell:
         return new_ports
 
 
-def GDSCell(backend, cell_name, filename, gds_dir):
+def GDSCell(cell_name, filename, gds_dir):
     '''
         Args:
-            backend: layout backend
             cell_name: cell within that file.
             filename: is the gds file name.
             gds_dir: where to look for file
@@ -345,7 +340,6 @@ def GDSCell(backend, cell_name, filename, gds_dir):
             super().__init__(name=name, **params)
 
         def draw(self, cell):
-            lt = self.backend
             layout = cell.layout()
             filepath = os.path.join(gds_dir, filename)
 
@@ -356,7 +350,7 @@ def GDSCell(backend, cell_name, filename, gds_dir):
                 gdscell = layout.read_cell(cell_name, filepath)
             cell_cache[(cell_name, filepath)] = gdscell
 
-            origin = lt.DPoint(0, 0)
+            origin = kdb.DPoint(0, 0)
             angle = 0
 
             cell.insert_cell(gdscell, origin, angle)

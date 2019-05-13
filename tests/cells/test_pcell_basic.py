@@ -7,8 +7,6 @@ from zeropdk.pcell import GDSCell
 
 import klayout.db as kdb
 
-lt = kdb
-
 pad_size = PCellParameter(
     name='pad_size',
     type=TypeDouble,
@@ -33,8 +31,8 @@ class PadArray(Pad):
 
 
 def test_pcell_inheritance():
-    pad = Pad(name='testname', backend=lt)
-    pad_array = PadArray(name='testname', backend=lt)
+    pad = Pad(name='testname')
+    pad_array = PadArray(name='testname')
     assert 'pad_size' in pad_array.params
     assert 'pad_array_count' in pad_array.params
 
@@ -49,8 +47,8 @@ gdslibpath = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../gdsl
 
 @pytest.fixture
 def top_cell():
-    def _top_cell(backend):
-        layout = backend.Layout()
+    def _top_cell():
+        layout = kdb.Layout()
         layout.dbu = 0.001
         TOP = layout.create_cell("TOP")
         return TOP, layout
@@ -61,10 +59,10 @@ def top_cell():
 def test_gdscell(top_cell):
 
     gds_dir = gdslibpath
-    princeton_logo = GDSCell(lt, 'princeton_logo',
-        'princeton_logo_simple.gds', gds_dir)(name='xyz', backend=lt)
-    TOP, layout = top_cell(lt)
-    ex = lt.DPoint(1, 0)
+    princeton_logo = GDSCell('princeton_logo',
+        'princeton_logo_simple.gds', gds_dir)(name='xyz')
+    TOP, layout = top_cell()
+    ex = kdb.DPoint(1, 0)
     plogo = princeton_logo.new_cell(layout)
     size = (plogo.bbox().p2 - plogo.bbox().p1).norm()
     for i in range(10):
@@ -87,10 +85,10 @@ def test_gdscell(top_cell):
 def test_gdscellcache(top_cell):
 
     gds_dir = gdslibpath
-    princeton_logo = GDSCell(lt, 'princeton_logo',
-        'princeton_logo_simple.gds', gds_dir)(name='xyz', backend=lt)
-    TOP, layout = top_cell(lt)
-    ex = lt.DPoint(1, 0)
+    princeton_logo = GDSCell('princeton_logo',
+        'princeton_logo_simple.gds', gds_dir)(name='xyz')
+    TOP, layout = top_cell()
+    ex = kdb.DPoint(1, 0)
 
     for i in range(10):
         # The new_cell method does not create new cells,

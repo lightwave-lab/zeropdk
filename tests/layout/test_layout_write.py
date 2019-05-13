@@ -6,13 +6,11 @@ from zeropdk.layout import insert_shape
 
 import klayout.db as kdb
 
-lt = kdb
-
 
 @pytest.fixture
 def top_cell():
-    def _top_cell(backend):
-        layout = backend.Layout()
+    def _top_cell():
+        layout = kdb.Layout()
         layout.dbu = 0.001
         TOP = layout.create_cell("TOP")
         return TOP, layout
@@ -21,14 +19,14 @@ def top_cell():
 
 
 def test_rectangle_write(top_cell):
-    TOP, layout = top_cell(lt)
+    TOP, layout = top_cell()
     layer = '1/0'
-    center = lt.DPoint(0, 0)
+    center = kdb.DPoint(0, 0)
     width = 20
     height = 10
-    ex = lt.DVector(1, 1)
-    ey = lt.DVector(0, 1)
-    r = rectangle(lt, center, width, height, ex, ey)
+    ex = kdb.DVector(1, 1)
+    ey = kdb.DVector(0, 1)
+    r = rectangle(center, width, height, ex, ey)
     assert repr(r) == '(-10,-15;-10,-5;10,15;10,5)'
 
     insert_shape(TOP, layer, r)

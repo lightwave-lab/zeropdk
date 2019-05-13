@@ -1,10 +1,10 @@
+import klayout.db as kdb
+
+
 class Tech:
     layers = None
-    _backend = None
 
-    def __init__(self, backend):
-        self._backend = backend
-
+    def __init__(self):
         if self.layers is None:
             self.layers = dict()
 
@@ -14,16 +14,14 @@ class Tech:
             layer_def: str: 10/0, 10 = layer index, 0, datatype
         '''
 
-        backend = self._backend
-
         layer_idx, datatype = layer_def.split('/')
         layer_idx = int(layer_idx)
         datatype = int(datatype)
         self.layers[layer_name] = \
-            backend.LayerInfo(layer_idx, datatype, layer_name)
+            kdb.LayerInfo(layer_idx, datatype, layer_name)
 
     @classmethod
-    def load_from_xml(cls, backend, lyp_filename):
+    def load_from_xml(cls, lyp_filename):
         with open(lyp_filename, 'r') as file:
             layer_dict = xml_to_dict(file.read())['layer-properties']['properties']
 
@@ -49,7 +47,7 @@ class Tech:
         # layer_map should contain values like '12/0'
         # 12 is the layer and 0 is the datatype
 
-        obj = cls(backend)
+        obj = cls()
 
         for layer_name, layer_string in layer_map.items():
             obj.add_layer(layer_name, layer_string)

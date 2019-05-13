@@ -4,7 +4,7 @@ from zeropdk.pcell import PCell, PCellParameter, \
 from zeropdk.layout import insert_shape
 from zeropdk.layout.polygons import rectangle
 
-from klayout.db import DPoint
+from klayout.db import DPoint, DVector
 
 pad_width = PCellParameter(
     name='pad_width',
@@ -90,10 +90,9 @@ class OrientedCell(PCell):
                             ey)
 
     def origin_ex_ey(self):
-        lt = self.backend
-        origin = lt.DPoint(self.params['origin'])
-        ex = lt.DVector(self.params.ex)
-        ey = lt.DVector(self.params.ey)
+        origin = DPoint(self.params['origin'])
+        ex = DVector(self.params.ex)
+        ey = DVector(self.params.ey)
         return origin, ex, ey
 
 
@@ -111,7 +110,6 @@ class DCPad(OrientedCell):
                             )
 
     def draw(self, cell):
-        lt = self.backend
         layout = cell.layout()
 
         origin, ex, ey = self.origin_ex_ey()
@@ -125,7 +123,7 @@ class DCPad(OrientedCell):
             return dpoly
 
         def make_pad(origin, pad_width, pad_height, ex, ey):
-            pad_square = rectangle(lt, origin, pad_width, pad_height, ex, ey)
+            pad_square = rectangle(origin, pad_width, pad_height, ex, ey)
             make_shape_from_dpolygon(pad_square, 0, layout.dbu, cp.layer_metal)
             make_shape_from_dpolygon(pad_square, -2.5, layout.dbu, cp.layer_opening)
 
@@ -145,12 +143,11 @@ class DCPadArray(DCPad):
                             pad_array_pitch)
 
     def draw(self, cell):
-        lt = self.backend
         cp = self.params
         origin, ex, _ = self.origin_ex_ey()
 
         for i in range(cp.pad_array_count):
-            dcpad = DCPad(name=f'pad_{i}', backend=lt, **cp)
+            dcpad = DCPad(name=f'pad_{i}', **cp)
             dc_ports = dcpad.place_cell(cell, origin + cp.pad_array_pitch * i * ex)
             self.add_port(dc_ports['el0'].rename(f'el_{i}'))
 
