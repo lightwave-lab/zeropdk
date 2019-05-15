@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from zeropdk.layout.geometry import rotate90, \
     manhattan_intersection, \
     cluster_ports
-from zeropdk.layout.waveguides import layout_waveguide
+from zeropdk.layout.waveguides import layout_waveguide, layout_waveguide_angle
 
 logger = logging.getLogger()
 
@@ -313,5 +313,163 @@ def append_Z_trace_vertical(path, new_point, height, ex, middle_layer=None, midd
         if middle_taper:
             path.append((Pmid, lmid, wmid))
         path.append((P2, l2, w2))
+    path.append(new_point)
+    return path
+
+
+# TODO: Reorganize
+import numpy as np
+debug = False
+
+from zeropdk.layout.geometry import bezier_optimal
+from math import pi
+
+
+def layout_connect_ports(cell, layer, port_from, port_to, smooth=True):
+    ''' Places an "optimal" bezier curve from port_from to port_to.
+    '''
+
+    if port_from.name.startswith("el"):
+        assert port_to.name.startswith("el")
+        P0 = port_from.position + port_from.direction * port_from.width / 2
+        P3 = port_to.position + port_to.direction * port_to.width / 2
+        smooth = smooth and True
+    else:
+        dbu = cell.layout().dbu
+        P0 = port_from.position - dbu * port_from.direction
+        P3 = port_to.position - dbu * port_to.direction
+        smooth = smooth or True
+    angle_from = np.arctan2(port_from.direction.y, port_from.direction.x) * 180 / pi
+    angle_to = np.arctan2(-port_to.direction.y, -port_to.direction.x) * 180 / pi
+
+    curve = bezier_optimal(P0, P3, angle_from, angle_to)
+    if debug:
+        for point in curve:
+            print(point)
+        print(f"bezier_optimal({P0}, {P3}, {angle_from}, {angle_to})")
+    return layout_waveguide(cell, layer, curve, [port_from.width, port_to.width], smooth=smooth)
+
+
+def layout_connect_ports_angle(cell, layer, port_from, port_to, angle):
+    ''' Places an "optimal" bezier curve from port_from to port_to, with a fixed orientation angle.
+
+    Use when connecting ports that are like horizontal-in and horizontal-out.
+    '''
+
+    if port_from.name.startswith("el"):
+        assert port_to.name.startswith("el")
+        P0 = port_from.position + port_from.direction * port_from.width / 2
+        P3 = port_to.position + port_to.direction * port_to.width / 2
+
+        # straight lines for electrical connectors
+        curve = [P0, P3]
+    else:
+        P0 = port_from.position
+        P3 = port_to.position
+        curve = bezier_optimal(P0, P3, angle, angle)
+
+    return layout_waveguide_angle(cell, layer, curve, [port_from.width, port_to.width], angle)
+
+
+# @cache_cell
+# class ViaMLM1(IMECell):
+
+#     def initialize_default_params(self):
+#         TECHNOLOGY = self.TECHNOLOGY
+#         self.define_param("angle_ex", self.TypeDouble,
+#                           "x-axis angle (deg)", default=0)
+#         self.define_param("ml_width", self.TypeDouble,
+#                           "Metal Width (um)", default=7)
+#         self.define_param("ML", self.TypeLayer, "ML Layer",
+#                           default=TECHNOLOGY['ML'])
+#         self.define_param("M1", self.TypeLayer, "M1 Layer",
+#                           default=TECHNOLOGY['M1'])
+#         self.define_param("VL", self.TypeLayer, "VL Layer",
+#                           default=TECHNOLOGY['VL'])
+
+#     def pcell(self, layout, cell=None, params=None):
+#         if cell is None:
+#             cell = layout.create_cell(self.name)
+
+#         cp = self.parse_param_args(params)
+
+#         origin = pya.DPoint(0, 0)
+
+#         ex = rotate(EX, cp.angle_ex * pi / 180)
+
+#         layerM1 = layout.layer(cp.M1)
+#         layerVL = layout.layer(cp.VL)
+#         layerML = layout.layer(cp.ML)
+
+#         ml_width = cp.ml_width
+#         via_width = ml_width - 4  # min inclusion 1.5
+#         m1_width = via_width + 4  # min inclusion 1.5
+
+#         layout_square(cell, layerVL, origin, via_width, ex)
+#         layout_square(cell, layerML, origin, ml_width, ex)
+#         layout_square(cell, layerM1, origin, m1_width, ex)
+
+#         return cell, dict()
+
+
+# def layout_ime_manhattan_traces(cell, path, ex, initiate_with_via=False):
+#     """ Lays out a manhattan trace with vias
+
+#         Args:
+#             path: list of tuples containing necessary info ((x, y) or pya.DPoint, layer, width)
+#     """
+#     TECHNOLOGY = get_technology_by_name('SiEPIC_IME')
+#     layer1 = TECHNOLOGY['M1']
+#     layer2 = TECHNOLOGY['ML']
+#     layervia = TECHNOLOGY['VL']
+
+#     def ime_via_cell_placer(cell, origin, width, layer1, layer2, layervia, ex):
+#         angle_ex = np.arctan2(ex.y, ex.x) * 180 / pi
+#         return ViaMLM1("_via"
+#                        ).place_cell(cell, origin,
+#                                     params={"M1": layer1,
+#                                             "ML": layer2,
+#                                             "VL": layervia,
+#                                             "angle_ex": angle_ex,
+#                                             "ml_width": width})
+#     return layout_manhattan_traces(cell, layer1, layer2, layervia,
+#                                    ime_via_cell_placer, path, ex,
+#                                    initiate_with_via=initiate_with_via)
+
+
+# def layout_ime_manhattan_traces_from_clusters(cell, layer,
+# ports_clusters, ex, initiate_with_via=False, terminate_with_via=False,
+# middle_taper=False, pitch=None):
+
+#     paths = compute_paths_from_clusters(
+#         ports_clusters, layer, ex, pitch=pitch, middle_taper=middle_taper)
+
+#     for path in paths:
+#         layout_ime_manhattan_traces(cell, path, ex, initiate_with_via=initiate_with_via)
+#         if terminate_with_via:
+#             P3 = path[-1][0]
+#             width = path[-1][2]
+#             angle_ex = np.arctan2(ex.y, ex.x) * 180 / pi
+#             ViaMLM1("_via"
+#                     ).place_cell(cell, P3,
+#                                  params={"angle_ex": angle_ex,
+#                                          "ml_width": width})
+
+
+def append_L_trace(path, new_point, middle_layer, ex):
+    """ Adds new_point to the path list plus ONE L manhattan intersection.
+
+        Args:
+            path: list of tuples containing necessary info ((x, y) or pya.DPoint, layer, width)
+            new_point: tuple ((x, y) or pya.DPoint, layer, width)
+    """
+
+    assert len(path) > 0
+
+    p1, l1, w1 = path[-1]  # pylint: disable=unused-variable
+    p2, l2, w2 = new_point  # pylint: disable=unused-variable
+    joint_width = min(w1, w2)
+    joint_point = manhattan_intersection(p1, p2, ex)
+    path.append((joint_point, middle_layer, joint_width))
     path.append(new_point)
     return path

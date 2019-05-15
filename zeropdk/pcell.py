@@ -168,7 +168,7 @@ class ParamContainer(Mapping):
 class Port(object):
     """ Defines a port object """
 
-    def __init__(self, name, position, direction, port_type, width=None):
+    def __init__(self, name, position, direction, width, port_type=None):
         self.name: str = name
         self.position = position  # Point
         self.direction = direction  # Vector
@@ -357,3 +357,89 @@ def GDSCell(cell_name, filename, gds_dir):
             return cell
 
     return GDS_cell_base
+
+
+from zeropdk.layout.geometry import rotate, rotate90
+from math import pi
+
+
+class CellWithPosition(PCell):
+    ''' handles the angle_ex parameter '''
+
+    params = ParamContainer(PCellParameter(name="angle_ex",
+                                           type=TypeDouble,
+                                           description="Placement Angle (0, 90, ..)",
+                                           default=0))
+
+    # def initialize_default_params(self):
+    #     self.define_param("angle_ex", self.TypeDouble,
+    #                       "Placement Angle (0, 90, ..)", default=0)
+
+    def origin_ex_ey(self, params=None, multiple_of_90=False):  # pylint: disable=unused-argument
+        EX = kdb.DVector(1, 0)
+        cp = self.parse_param_args(params)
+        origin = kdb.DPoint(0, 0)
+        if multiple_of_90:
+            if cp.angle_ex % 90 != 0:
+                raise RuntimeError("Specify an angle multiple of 90 degrees")
+        ex = rotate(EX, cp.angle_ex * pi / 180)
+        ey = rotate90(ex)
+        return origin, ex, ey
+
+
+def place_cell(parent_cell, pcell, ports_dict, placement_origin, relative_to=None, transform_into=False):
+    """ Places an pya cell and return ports with updated positions
+    Args:
+        parent_cell: cell to place into
+        pcell, ports_dict: result of KLayoutPCell.pcell call
+        placement_origin: pya.Point object to be used as origin
+        relative_to: port name
+            the cell is placed so that the port is located at placement_origin
+        transform_into:
+            if used with relative_into, transform the cell's coordinate system
+            so that its origin is in the given port.
+
+    Returns:
+        ports(dict): key:port.name, value: geometry.Port with positions relative to parent_cell's origin
+    """
+    offset = kdb.DVector(0, 0)
+    port_offset = placement_origin
+    if relative_to is not None:
+        offset = ports_dict[relative_to].position
+        port_offset = placement_origin - offset
+        if transform_into:
+            # print(type(pcell))
+            offset_transform = kdb.DTrans(kdb.DTrans.R0, -offset)
+            for instance in pcell.each_inst():
+                instance.transform(offset_transform)
+            pcell.transform_into(offset_transform)
+        else:
+            placement_origin = placement_origin - offset
+
+    transformation = kdb.DTrans(kdb.Trans.R0, placement_origin)
+    instance = kdb.DCellInstArray(pcell.cell_index(), transformation)
+    parent_cell.insert(instance)
+    for port in ports_dict.values():
+        port.position += port_offset
+
+    return ports_dict
+
+
+def port_to_pin_helper(ports_list, cell, layerPinRec):
+    ''' Draws port shapes for visual help in KLayout. '''
+    # Create the pins, as short paths:
+    from siepic_tools.config import PIN_LENGTH
+    dbu = cell.layout().dbu
+
+    for port in ports_list:
+        if port.name.startswith("el"):
+            pin_length = port.width
+        else:
+            pin_length = PIN_LENGTH * dbu
+
+        port_position_i = port.position.to_itype(dbu)
+        cell.shapes(layerPinRec).insert(
+            kdb.DPath([port.position - 0.5 * pin_length * port.direction,
+                       port.position + 0.5 * pin_length * port.direction], port.width).to_itype(dbu))
+        cell.shapes(layerPinRec).insert(kdb.Text(port.name, kdb.Trans(
+            kdb.Trans.R0, port_position_i.x, port_position_i.y))).text_size = 2 / dbu
