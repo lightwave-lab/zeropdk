@@ -45,6 +45,7 @@ def main():
         install_requires=[
             'numpy',
             'klayout',
+            'scipy',
         ]
     )
 

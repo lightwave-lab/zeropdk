@@ -157,7 +157,8 @@ def bezier_line(P0, P1, P2, P3):
     Reference
         https://en.wikipedia.org/wiki/Bézier_curve"""
 
-    return lambda t: (1 - t)**3 * P0 + 3 * (1 - t)**2 * t * P1 + 3 * (1 - t) * t**2 * P2 + t**3 * P3
+    curve_func = lambda t: (1 - t)**3 * P0 + 3 * (1 - t)**2 * t * P1 + 3 * (1 - t) * t**2 * P2 + t**3 * P3
+    return np.frompyfunc(curve_func, 1, 1)
 
 
 def curvature_bezier(P0, P1, P2, P3):
@@ -173,12 +174,12 @@ def curvature_bezier(P0, P1, P2, P3):
     b_prime = lambda t: 3 * (1 - t)**2 * (P1 - P0) + 6 * (1 - t) * \
         t * (P2 - P1) + 3 * t**2 * (P3 - P2)
     b_second = lambda t: 6 * (1 - t) * (P2 - 2 * P1 + P0) + 6 * t * (P3 - 2 * P2 + P1)
-
     dx = lambda t: b_prime(t).x
     dy = lambda t: b_prime(t).y
     ddx = lambda t: b_second(t).x
     ddy = lambda t: b_second(t).y
-    return lambda t: (dx(t) * ddy(t) - dy(t) * ddx(t)) / (dx(t) ** 2 + dy(t) ** 2) ** (3 / 2)
+    curv_func = lambda t: (dx(t) * ddy(t) - dy(t) * ddx(t)) / (dx(t) ** 2 + dy(t) ** 2) ** (3 / 2)
+    return np.frompyfunc(curv_func, 1, 1)
 
 
 from scipy.optimize import minimize
@@ -349,9 +350,22 @@ try:
         scale = (P3 - P0).norm()  # rough length.
         # if scale > 1000:  # if in nanometers, convert to microns
         #     scale /= 1000
-        # This function returns a Line object, needs to convert to array of Points
+        # This function returns a np.array of Points.
+        # We need to convert to array of Point coordinates
         new_bezier_line = _bezier_optimal_pure(P0, P3, *args, **kwargs)
-        bezier_point_coordinates = lambda t: np.array([new_bezier_line(t).x, new_bezier_line(t).y])
+        # bezier_point_coordinates = lambda t: np.array([new_bezier_line(t).x, new_bezier_line(t).y])
+
+        def bezier_point_coordinates(t):
+            try:
+                if len(t) > 1:
+                    return np.array([[p.x, p.y] for p in new_bezier_line(t)]).T
+                else:
+                    p = new_bezier_line(t)[0]
+            except TypeError:  # object of type 'int' has no len()
+                p = new_bezier_line(t)
+            return np.array([[p.x], [p.y]])
+
+        # bezier_point_coordinates = lambda t: np.array([[p.x, p.y] for p in new_bezier_line(t)]).T
 
         t_sampled, bezier_point_coordinates_sampled = \
             sample_function(bezier_point_coordinates, [0, 1], tol=0.005 / scale)  # tol about 5 nm

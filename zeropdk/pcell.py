@@ -10,6 +10,8 @@ logger = logging.getLogger()
 
 TypeDouble = float
 TypeInt = int
+TypeBoolean = bool
+TypeString = str
 TypeList = list
 TypePoint = kdb.DPoint
 TypeVector = kdb.DVector
@@ -209,6 +211,10 @@ class Port(object):
 
 class PCell:
 
+    # It is useful to define params and ports during class definition.
+    # This way, inherited classes can inherit (and merge) these
+    # properties. The logic for this can be found in __new__ method
+    # below
     params: ParamContainer = ParamContainer()
     ports: Dict[str, Port] = {}
     _cell: kdb.Cell = None
@@ -357,34 +363,6 @@ def GDSCell(cell_name, filename, gds_dir):
             return cell
 
     return GDS_cell_base
-
-
-from zeropdk.layout.geometry import rotate, rotate90
-from math import pi
-
-
-class CellWithPosition(PCell):
-    ''' handles the angle_ex parameter '''
-
-    params = ParamContainer(PCellParameter(name="angle_ex",
-                                           type=TypeDouble,
-                                           description="Placement Angle (0, 90, ..)",
-                                           default=0))
-
-    # def initialize_default_params(self):
-    #     self.define_param("angle_ex", self.TypeDouble,
-    #                       "Placement Angle (0, 90, ..)", default=0)
-
-    def origin_ex_ey(self, params=None, multiple_of_90=False):  # pylint: disable=unused-argument
-        EX = kdb.DVector(1, 0)
-        cp = self.parse_param_args(params)
-        origin = kdb.DPoint(0, 0)
-        if multiple_of_90:
-            if cp.angle_ex % 90 != 0:
-                raise RuntimeError("Specify an angle multiple of 90 degrees")
-        ex = rotate(EX, cp.angle_ex * pi / 180)
-        ey = rotate90(ex)
-        return origin, ex, ey
 
 
 def place_cell(parent_cell, pcell, ports_dict, placement_origin, relative_to=None, transform_into=False):

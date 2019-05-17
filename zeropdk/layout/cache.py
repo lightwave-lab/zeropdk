@@ -39,7 +39,7 @@ def cache_cell(cls, cache_dir=cache_dir):
         class MyCell(KLayoutPCell):
             pass
     """
-    activated = True
+    activated = False
     if activated:
         # decorate pcell
         def cache_decorator(pcell):

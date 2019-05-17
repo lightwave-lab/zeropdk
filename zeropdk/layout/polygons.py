@@ -83,9 +83,9 @@ def layout_square(cell, layer, center, width, ex=None):
         ex = pya.DPoint(1, 0)
     ey = rotate90(ex)
 
-    square = square(center, width, ex, ey)
-    insert_shape(cell, layer, square)
-    return square
+    shape = square(center, width, ex, ey)
+    insert_shape(cell, layer, shape)
+    return shape
 
 
 def layout_rectangle(cell, layer, center, width, height, ex):
@@ -101,9 +101,9 @@ def layout_rectangle(cell, layer, center, width, height, ex):
 
     ey = rotate90(ex)
 
-    rectangle = rectangle(center, width, height, ex, ey)
-    insert_shape(cell, layer, rectangle)
-    return rectangle
+    shape = rectangle(center, width, height, ex, ey)
+    insert_shape(cell, layer, shape)
+    return shape
 
 
 # TODO: Reorganize later
