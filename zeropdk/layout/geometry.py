@@ -357,13 +357,11 @@ try:
 
         def bezier_point_coordinates(t):
             try:
-                if len(t) > 1:
+                if len(t) > 0:
                     return np.array([[p.x, p.y] for p in new_bezier_line(t)]).T
-                else:
-                    p = new_bezier_line(t)[0]
             except TypeError:  # object of type 'int' has no len()
                 p = new_bezier_line(t)
-            return np.array([[p.x], [p.y]])
+            return np.array([p.x, p.y])
 
         # bezier_point_coordinates = lambda t: np.array([[p.x, p.y] for p in new_bezier_line(t)]).T
 

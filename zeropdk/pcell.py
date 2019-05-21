@@ -250,7 +250,7 @@ class PCell:
 
     def set_param(self, **params):
         for name, p_value in params.items():
-            if name in self.params:
+            if name in self.params._container:
                 setattr(self.params, name, p_value)
             else:
                 logger.debug("Ignoring '{name}' parameter in {klass}."
@@ -267,61 +267,8 @@ class PCell:
     def add_port(self, port: Port):
         self.ports[port.name] = port
 
-    @property
-    def cp(self):
-        ''' Alias for self.params
-
-            Rationale:
-                - type pcell.cp instead of pcell.params
-                - access with cp.name instead of cp['name']
-        '''
-        return self.params
-
-    def place_cell(self, parent_cell, placement_origin, params=None,
-                   relative_to=None, transform_into=False):
-        """ Places this pcell into parent_cell and return ports with
-            updated position and orientation.
-        Args:
-            parent_cell: cell to place into
-            placement_origin: pya.Point object to be used as origin
-            relative_to: port name
-                the cell is placed so that the port is located at placement_origin
-            transform_into:
-                if used with relative_into, transform the cell's coordinate system
-                so that its origin is in the given port.
-
-        Returns:
-            ports(dict):
-                key:port.name,
-                value: geometry.Port with positions relative to parent_cell's origin
-        """
-        layout = parent_cell.layout()
-        cell = self.new_cell(layout)
-        ports = self.ports
-
-        # Compute new placement origin and port_offset
-
-        # offset = kdb.DVector(0, 0)
-        port_offset = placement_origin
-        if relative_to is not None:
-            offset = ports[relative_to].position
-            port_offset = placement_origin - offset
-            if transform_into:
-                # print(type(pcell))
-                offset_transform = kdb.DTrans(kdb.DTrans.R0, -offset)
-                for instance in cell.each_inst():
-                    instance.transform(offset_transform)
-                cell.transform_into(offset_transform)
-            else:
-                placement_origin = placement_origin - offset
-
-        parent_cell.insert_cell(cell, placement_origin, 0)
-
-        new_ports = deepcopy(ports)
-        for port in new_ports.values():
-            port.position += port_offset
-
-        return new_ports
+    def reset_ports(self):
+        self.ports = dict()
 
 
 def GDSCell(cell_name, filename, gds_dir):
@@ -357,7 +304,13 @@ def GDSCell(cell_name, filename, gds_dir):
             cell_cache[(cell_name, filepath)] = gdscell
 
             origin = kdb.DPoint(0, 0)
-            angle = 0
+
+            # TODO: refactor this.
+            # Idea: add default ex, ey parameters to every PCell
+            if 'angle_ex' in self.params:
+                angle = self.params.angle_ex
+            else:
+                angle = 0
 
             cell.insert_cell(gdscell, origin, angle)
             return cell
@@ -406,7 +359,8 @@ def place_cell(parent_cell, pcell, ports_dict, placement_origin, relative_to=Non
 def port_to_pin_helper(ports_list, cell, layerPinRec):
     ''' Draws port shapes for visual help in KLayout. '''
     # Create the pins, as short paths:
-    from siepic_tools.config import PIN_LENGTH
+    # from siepic_tools.config import PIN_LENGTH
+    PIN_LENGTH = 100
     dbu = cell.layout().dbu
 
     for port in ports_list:

@@ -201,9 +201,11 @@ def layout_circle(cell, layer, center, r):
     t, coords = sample_function(arc_function,
                                 [0, 2 * np.pi - 0.001], tol=0.002 / r)
 
-    dbu = cell.layout().dbu
+    # dbu = cell.layout().dbu
     dpoly = pya.DSimplePolygon([pya.DPoint(x, y) for x, y in zip(*coords)])
-    cell.shapes(layer).insert(dpoly.to_itype(dbu))
+    # cell.shapes(layer).insert(dpoly.to_itype(dbu))
+    insert_shape(cell, layer, dpoly)
+    return dpoly
 
 
 layout_disk = layout_circle

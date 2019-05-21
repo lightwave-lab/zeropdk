@@ -1,4 +1,5 @@
 import klayout.db as kdb
+import pya
 from zeropdk import klayout_extend  # noqa
 
 import numpy as np
@@ -31,7 +32,7 @@ def patch_simple_polygon(backend):
 
             polygon_dpoints_transformed = [center + p.x *
                                            ex + p.y * ey for p in self.each_point()]
-            self.assign(backend.DSimplePolygon(polygon_dpoints_transformed))
+            self.assign(_SimplePolygon(polygon_dpoints_transformed))
             return self
 
         def clip(self, x_bounds=(-np.inf, np.inf), y_bounds=(-np.inf, np.inf)):
@@ -104,7 +105,7 @@ def patch_simple_polygon(backend):
                 # this can only happen if boundaries are finite
                 # return boundary vertices
                 boundary_vertices = [boundary_vertex(i, i - 1) for i in range(4, 0, -1)]
-                self.assign(backend.DSimplePolygon(boundary_vertices))
+                self.assign(_SimplePolygon(boundary_vertices))
                 return self
 
             idx += 1  # make previous_point below already be inside
@@ -135,7 +136,7 @@ def patch_simple_polygon(backend):
                 previous_point = point
                 if last_intersect is not None:
                     previous_intersect = last_intersect
-            self.assign(backend.DSimplePolygon(polygon_dpoints_clipped))
+            self.assign(_SimplePolygon(polygon_dpoints_clipped))
             return self
 
         def layout(self, cell, layer):
@@ -215,3 +216,4 @@ def patch_simple_polygon(backend):
 
 
 patch_simple_polygon(kdb)
+patch_simple_polygon(pya)

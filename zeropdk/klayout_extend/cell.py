@@ -24,7 +24,7 @@ old_cell_shapes = Cell.shapes
 
 
 def cell_shapes(self, layer):
-    if not isinstance(layer, int):
+    if layer is not None and not isinstance(layer, int):
         layer = self.layout().layer(layer)
     return old_cell_shapes(self, layer)
 

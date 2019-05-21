@@ -75,12 +75,22 @@ def pyaPoint__init__(self, *args):
         raise ValueError('Unknown constructor')
 
 
+def pyaPoint__getstate__(self):
+    return (self.x, self.y)
+
+
+def pyaPoint__setstate__(self, state):
+    self.x, self.y = state
+
+
 for klass in PointLike:
     klass.__init__ = pyaPoint__init__
     klass.__rmul__ = pyaPoint__rmul__
     klass.__mul__ = pyaPoint__mul__
     klass.__truediv__ = pyaPoint__truediv__
     klass.__deepcopy__ = pyaPoint__deepcopy__
+    klass.__getstate__ = pyaPoint__getstate__
+    klass.__setstate__ = pyaPoint__setstate__
     klass.normalize = pyaPoint_normalize
     klass.norm = pyaPoint_norm
 
