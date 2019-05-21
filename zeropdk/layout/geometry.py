@@ -261,35 +261,22 @@ def _bezier_optimal(angle0, angle3):
     # initial tangents. This prevents loops.
     if angle0 * angle3 < 0 and np.abs(angle3 - angle0) < np.pi:
         third_angle = np.pi - np.abs(angle3) - np.abs(angle0)
-        a_bound = np.abs(np.sin(angle3)) / np.sin(third_angle)
-        b_bound = np.abs(np.sin(angle0)) / np.sin(third_angle)
-
-        def ineq(a, b):
-            # we want to penalize if both of the following are positive
-            a = a_bound - a
-            b = b_bound - b
-
-            # logistic_penalty(a, 0.0001) * logistic_penalty(b, 0.0001)
-            return 1 * (a > 0) * (b > 0)
+        a_bound = min(np.abs(np.sin(angle3)) / np.sin(third_angle), MAX * 3)
+        b_bound = min(np.abs(np.sin(angle0)) / np.sin(third_angle), MAX * 3)
 
         initial_simplex = np.array([[a, b], [a * 1.1, b], [a, b * 1.1]])
-        # print("init ineq:", ineq(a, b))
-        # print("init J:", J(a, b, MAX * 3, MAX * 3))
-        result = minimize(lambda x: J(x[0], x[1], MAX * 3, MAX * 3),
+
+        result = minimize(lambda x: J(x[0], x[1], a_bound, b_bound),
                           np.array([a, b]),
                           method='Nelder-Mead',
                           options=dict(initial_simplex=initial_simplex))
-        # print("end J:", J(result.x[0], result.x[1], MAX * 3, MAX * 3))
-        # print("end ineq:", ineq(result.x[0], result.x[1]))
     else:
-        # a_bound = MAX / abs(max(np.sin(angle0), np.cos(angle0)))
-        # b_bound = MAX / abs(max(np.sin(angle3), np.cos(angle3)))
         a_bound = MAX
         b_bound = MAX
 
         initial_simplex = np.array([[a, b], [a * 1.1, b], [a, b * 1.1]])
 
-        result = minimize(lambda x: J(x[0], x[1], MAX, MAX),
+        result = minimize(lambda x: J(x[0], x[1], a_bound, b_bound),
                           np.array([a, b]),
                           method='Nelder-Mead',
                           options=dict(initial_simplex=initial_simplex))
