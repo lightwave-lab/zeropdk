@@ -176,6 +176,6 @@ def cache_cell(cls, cache_dir=cache_dir):
 
                 return cell
             return wrapper_draw
-        if hasattr(cls, 'draw') and cls.draw.__name__ != 'cache_decorator':
+        if hasattr(cls, 'draw') and cls.draw.__name__ != 'wrapper_draw':
             setattr(cls, 'draw', cache_decorator(cls.draw))
     return cls

@@ -290,7 +290,7 @@ def GDSCell(cell_name, filename, gds_dir):
         """ Imports a gds file and places it."""
 
         def __init__(self, name=cell_name, **params):
-            super().__init__(name=name, **params)
+            PCell.__init__(self, name=name, **params)
 
         def draw(self, cell):
             layout = cell.layout()
