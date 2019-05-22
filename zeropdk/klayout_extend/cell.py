@@ -18,8 +18,6 @@ def cell_insert_cell(cell: Cell, other_cell: Cell,
 
 Cell.insert_cell = cell_insert_cell
 
-Cell.bbox = Cell.dbbox
-
 old_cell_shapes = Cell.shapes
 
 
