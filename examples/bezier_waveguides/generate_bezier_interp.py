@@ -15,7 +15,7 @@ import os
 
 def generate_npz():
 
-    x = y = np.linspace(-170, 170, 35) * np.pi / 180
+    x = y = np.linspace(-170, 170, 351) * np.pi / 180
 
     xx, yy = np.meshgrid(x, y)
     z_a, z_b = np.frompyfunc(_bezier_optimal, 2, 2)(xx, yy)
