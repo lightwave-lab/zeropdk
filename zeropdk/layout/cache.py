@@ -3,7 +3,6 @@ import os
 from hashlib import sha256
 import inspect
 import pickle
-from copy import deepcopy
 
 layer_map_dict = dict()
 debug = False
@@ -83,6 +82,7 @@ def cache_cell(cls, cache_dir=cache_dir):
     First, it computes a hash based on:
         1. the source code of the class and its bases.
         2. the non-default parameter with which the pcell method is called
+        3. the name of the pcell
 
     Second, it saves a cell with name cache_HASH in cache_HASH.gds inside
     the cache folder. The port list and position is also saved in cache_HASH.klayout.pkl,
@@ -92,9 +92,6 @@ def cache_cell(cls, cache_dir=cache_dir):
     positions instead of recalculating everything.
 
     Warnings:
-        - The name of the cell is not in the hash, so multiple cells that use
-        the same instantiation parameters but different names will have the
-        same underlying cell instance in the layout.
         - If the cell contents depend on something other than the contents
         of the hash described above, for example an external .gds file, any
         external change will not be seen by the caching algorithm. You have
@@ -154,7 +151,7 @@ def cache_cell(cls, cache_dir=cache_dir):
                     empty_layout = pya.Layout()
                     empty_cell = empty_layout.create_cell(cell.name)
                     filled_cell = draw(self, empty_cell)
-                    ports = deepcopy(self.ports)
+                    ports = self.ports
 
                     if debug:
                         print(f"Writing to cache: {cache_fname}: {filled_cell.name}, {ports}")
@@ -166,10 +163,13 @@ def cache_cell(cls, cache_dir=cache_dir):
                     with open(cache_fpath_pkl, 'wb') as file:
                         pickle.dump((ports, short_hash_pcell, cellname), file)
 
+                    # Make sure we delete the empty_layout to not grow
+                    # helps debug
+                    layer_map_dict.pop(empty_layout, None)
+                    del empty_layout
                     assert not layout.has_cell(cache_fname)
 
                     read_layout(layout, cache_fpath_gds)
-
                     retrieved_cell = layout.cell(cache_fname)
                     cell.insert(pya.DCellInstArray(retrieved_cell.cell_index(),
                                                    pya.DTrans(pya.DTrans.R0, pya.DPoint(0, 0))))

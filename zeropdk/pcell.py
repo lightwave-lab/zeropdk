@@ -284,10 +284,10 @@ def GDSCell(cell_name, filename, gds_dir):
 
     assert gds_dir is not None
 
-    cell_cache = {}
-
     class GDS_cell_base(PCell):
         """ Imports a gds file and places it."""
+
+        _cell_cache = {}
 
         def __init__(self, name=cell_name, **params):
             PCell.__init__(self, name=name, **params)
@@ -297,11 +297,11 @@ def GDSCell(cell_name, filename, gds_dir):
             filepath = os.path.join(gds_dir, filename)
 
             # Attempt to read from cache first
-            if (cell_name, filepath) in cell_cache:
-                gdscell = cell_cache[(cell_name, filepath)]
+            if (cell_name, filepath, layout) in self._cell_cache:
+                gdscell = self._cell_cache[(cell_name, filepath, layout)]
             else:
                 gdscell = layout.read_cell(cell_name, filepath)
-            cell_cache[(cell_name, filepath)] = gdscell
+            self._cell_cache[(cell_name, filepath, layout)] = gdscell
 
             origin = kdb.DPoint(0, 0)
 
