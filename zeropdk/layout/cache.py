@@ -6,7 +6,7 @@ import pickle
 from copy import deepcopy
 
 layer_map_dict = dict()
-debug = True
+debug = False
 cache_dir = os.path.join(os.getcwd(), 'cache')
 
 

@@ -158,7 +158,7 @@ def bezier_line(P0, P1, P2, P3):
         https://en.wikipedia.org/wiki/Bézier_curve"""
 
     curve_func = lambda t: (1 - t)**3 * P0 + 3 * (1 - t)**2 * t * P1 + 3 * (1 - t) * t**2 * P2 + t**3 * P3
-    return np.frompyfunc(curve_func, 1, 1)
+    return curve_func
 
 
 def curvature_bezier(P0, P1, P2, P3):
@@ -179,7 +179,7 @@ def curvature_bezier(P0, P1, P2, P3):
     ddx = lambda t: b_second(t).x
     ddy = lambda t: b_second(t).y
     curv_func = lambda t: (dx(t) * ddy(t) - dy(t) * ddx(t)) / (dx(t) ** 2 + dy(t) ** 2) ** (3 / 2)
-    return np.frompyfunc(curv_func, 1, 1)
+    return curv_func
 
 
 from scipy.optimize import minimize
@@ -216,8 +216,68 @@ def fix_angle(angle):
 def logistic_penalty(x, a):
     return 1 / (1 + np.exp(-x / a))
 
+# #### The following classes (Point and Line) exist only to speed up
+#      the code in bezier_optimal. klayout objects have a slower
+#      interface
 
-from klayout.db import DPoint as Point
+
+MAGIC_NUMBER = 15.0
+from numpy import sqrt
+
+
+class _Point(object):
+    """ Defines a point with two coordinates. Mimics pya.Point"""
+
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+    def __add__(self, other):
+        x = self.x + other.x
+        y = self.y + other.y
+        return self.__class__(x, y)
+
+    def __sub__(self, other):
+        x = self.x - other.x
+        y = self.y - other.y
+        return self.__class__(x, y)
+
+    __array_priority__ = MAGIC_NUMBER  #: This allows rmul to be called first. See https://stackoverflow.com/questions/38229953/array-and-rmul-operator-in-python-numpy"""
+
+    def __mul__(self, factor):
+        """ This implements P * factor"""
+        if isinstance(factor, np.ndarray):
+            # Return a Line instead
+            return _Line(self.x * factor, self.y * factor)
+        elif isinstance(factor, _Point):
+            return self.x * factor.x + self.y * factor.y
+        return self.__class__(self.x * factor, self.y * factor)
+
+    def __rmul__(self, factor):
+        """ This implements factor * P """
+        if isinstance(factor, np.ndarray):
+            return self.__mul__(factor)
+        return self.__class__(self.x * factor, self.y * factor)
+
+    def __eq__(self, other):
+        return self.x == other.x and self.y == other.y
+
+    def __str__(self):
+        return "Point({}, {})".format(self.x, self.y)
+
+    def norm(self):
+        return sqrt(self.x**2 + self.y**2)
+
+
+class _Line(_Point):
+    """ Defines a line """
+
+    def __init__(self, x, y):
+        self.x, self.y = np.asarray(x), np.asarray(y)
+        assert np.shape(self.x) == np.shape(self.y)
+
+    def __eq__(self, other):
+        return np.all(self.x == other.x) and np.all(self.y == other.y)
 
 
 def _bezier_optimal(angle0, angle3):
@@ -236,10 +296,10 @@ def _bezier_optimal(angle0, angle3):
 
     def J(a, b, a_max, b_max):
         """ Energy function for bezier optimization """
-        P0 = Point(0, 0)
-        P3 = Point(1, 0)
-        P1 = P0 + a * Point(np.cos(angle0), np.sin(angle0))
-        P2 = P3 - b * Point(np.cos(angle3), np.sin(angle3))
+        P0 = _Point(0, 0)
+        P3 = _Point(1, 0)
+        P1 = P0 + a * _Point(np.cos(angle0), np.sin(angle0))
+        P2 = P3 - b * _Point(np.cos(angle3), np.sin(angle3))
 
         main_penalty = _curvature_penalty(P0, P1, P2, P3)
 
@@ -266,7 +326,7 @@ def _bezier_optimal(angle0, angle3):
 
         initial_simplex = np.array([[a, b], [a * 1.1, b], [a, b * 1.1]])
 
-        result = minimize(lambda x: J(x[0], x[1], a_bound, b_bound),
+        result = minimize(lambda x: J(x[0], x[1], MAX * 3, MAX * 3),
                           np.array([a, b]),
                           method='Nelder-Mead',
                           options=dict(initial_simplex=initial_simplex))
@@ -292,6 +352,34 @@ def _bezier_optimal(angle0, angle3):
     return a, b
 
 
+import os
+from scipy.interpolate import interp2d
+pwd = os.path.dirname(os.path.realpath(__file__))
+bezier_optimal_fpath = os.path.join(pwd, 'bezier_optimal.npz')
+
+_original_bezier_optimal = _bezier_optimal
+
+
+def memoized_bezier_optimal(angle0, angle3, file):
+    try:
+        npzfile = np.load(file)
+        x = npzfile['x']
+        y = npzfile['y']
+        z_a = npzfile['z_a']
+        z_b = npzfile['z_b']
+
+        a = interp2d(x, y, z_a)(angle0, angle3)[0]
+        b = interp2d(x, y, z_b)(angle0, angle3)[0]
+    except:
+        return _original_bezier_optimal(angle0, angle3)
+    return a, b
+
+
+from functools import partial
+if os.path.isfile(bezier_optimal_fpath):
+    _bezier_optimal = partial(memoized_bezier_optimal, file=bezier_optimal_fpath)
+
+
 def bezier_optimal(P0, P3, angle0, angle3):
     """ Computes the optimal bezier curve from P0 to P3 with angles 0 and 3
 
@@ -309,8 +397,8 @@ def bezier_optimal(P0, P3, angle0, angle3):
 
     scaling = vector.norm()
     if scaling > 0:
-        P1 = a * scaling * Point(np.cos(angle0), np.sin(angle0)) + P0
-        P2 = P3 - b * scaling * Point(np.cos(angle3), np.sin(angle3))
+        P1 = a * scaling * _Point(np.cos(angle0), np.sin(angle0)) + P0
+        P2 = P3 - b * scaling * _Point(np.cos(angle3), np.sin(angle3))
         curve_func = bezier_line(P0, P1, P2, P3)
         with np.errstate(divide='ignore'):
             # warn if minimum radius is smaller than 3um
@@ -326,36 +414,29 @@ def bezier_optimal(P0, P3, angle0, angle3):
 # Allow us to use these functions directly with pya.DPoints
 
 try:
-    import pya
+    import klayout.db as pya
     _bezier_optimal_pure = bezier_optimal
 
     def bezier_optimal(P0, P3, *args, **kwargs):
         ''' If inside KLayout, return computed list of KLayout points.
         '''
-        P0 = Point(P0.x, P0.y)
-        P3 = Point(P3.x, P3.y)
+        P0 = _Point(P0.x, P0.y)
+        P3 = _Point(P3.x, P3.y)
         scale = (P3 - P0).norm()  # rough length.
         # if scale > 1000:  # if in nanometers, convert to microns
         #     scale /= 1000
         # This function returns a np.array of Points.
         # We need to convert to array of Point coordinates
         new_bezier_line = _bezier_optimal_pure(P0, P3, *args, **kwargs)
-        # bezier_point_coordinates = lambda t: np.array([new_bezier_line(t).x, new_bezier_line(t).y])
-
-        def bezier_point_coordinates(t):
-            try:
-                if len(t) > 0:
-                    return np.array([[p.x, p.y] for p in new_bezier_line(t)]).T
-            except TypeError:  # object of type 'int' has no len()
-                p = new_bezier_line(t)
-            return np.array([p.x, p.y])
-
-        # bezier_point_coordinates = lambda t: np.array([[p.x, p.y] for p in new_bezier_line(t)]).T
+        bezier_point_coordinates = lambda t: np.array([new_bezier_line(t).x, new_bezier_line(t).y])
 
         t_sampled, bezier_point_coordinates_sampled = \
             sample_function(bezier_point_coordinates, [0, 1], tol=0.005 / scale)  # tol about 5 nm
 
-        # # This yields a better polygon
+        # The following adds two points right after the first and before the last point
+        # to guarantee that the first edge of the path goes out in the direction
+        # of the 'port'.
+
         insert_at = np.argmax(0.001 / scale < t_sampled)
         t_sampled = np.insert(t_sampled, insert_at, 0.001 / scale)
         bezier_point_coordinates_sampled = \
@@ -373,4 +454,4 @@ try:
         return [pya.DPoint(x, y) for (x, y) in zip(*(bezier_point_coordinates_sampled))]
 
 except ImportError:
-    pass
+    raise

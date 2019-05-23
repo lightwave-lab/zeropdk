@@ -34,6 +34,7 @@ def main():
         url="https://github.com/lightwave-lab/zeropdk",
         author="Thomas Ferreira de Lima <tlima@princeton.edu>",
         author_email="tlima@princeton.edu",
+        include_package_data=True,
         classifiers=(
             "Programming Language :: Python :: 3.6",
             "Programming Language :: Python :: 3.7",

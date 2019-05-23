@@ -62,16 +62,17 @@ def pyaPoint_normalize(self):
 
 
 def pyaPoint__init__(self, *args):
-    if len(args) == 1:
-        p, = args
-        try:
-            self.x = p.x
-            self.y = p.y
-        except:
-            raise ValueError('Cannot understand {}'.format(p))
-    elif len(args) == 2:
+    try:
         self.x, self.y = args
-    else:
+    except (TypeError, ValueError):
+        if len(args) == 1:
+            p, = args
+            try:
+                self.x = p.x
+                self.y = p.y
+            except:
+                raise ValueError('Cannot understand {}'.format(p))
+    except:
         raise ValueError('Unknown constructor')
 
 
