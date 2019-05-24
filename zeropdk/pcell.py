@@ -235,7 +235,10 @@ class PCell:
             # First, collect all parent params, assuming they are
             # all disjoint
             new_params = ParamContainer()
-            for klass in cls.__mro__:
+
+            # traverse the MRO of this class in reverse order,
+            # since the newest class has the most up-to-date parameters
+            for klass in reversed(cls.__mro__):
                 if issubclass(klass, PCell):
                     new_params = new_params.merge(klass.params)
             new_params = new_params.merge(cls.params)
@@ -244,9 +247,10 @@ class PCell:
 
         return obj
 
-    def __init__(self, *, name: str, **params):
+    def __init__(self, *, name: str, params=None):
         self.name = name
-        self.set_param(**params)
+        if params is not None:
+            self.set_param(**params)
 
     def set_param(self, **params):
         for name, p_value in params.items():
@@ -289,8 +293,8 @@ def GDSCell(cell_name, filename, gds_dir):
 
         _cell_cache = {}
 
-        def __init__(self, name=cell_name, **params):
-            PCell.__init__(self, name=name, **params)
+        def __init__(self, name=cell_name, params=None):
+            PCell.__init__(self, name=name, params=params)
 
         def draw(self, cell):
             layout = cell.layout()

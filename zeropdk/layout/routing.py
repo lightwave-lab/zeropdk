@@ -308,7 +308,7 @@ def append_Z_trace_vertical(path, new_point, height, ex, middle_layer=None, midd
         if (P3 - P2) * ey > max(w1, w2) * 3:
             path.append((P2 + ey * max(w1, w2) * 3, l2, w2))
         else:
-            path.append((P3 - ey * max(w1, w2) * 0.1, l3, w3))
+            path.append((P3 + ey * max(w1, w2) * 0.2, l3, w3))
     else:
         if middle_taper:
             path.append((Pmid, lmid, wmid))
