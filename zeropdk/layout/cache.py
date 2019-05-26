@@ -141,7 +141,6 @@ def cache_cell(cls, cache_dir=cache_dir):
                     retrieved_cell = layout.cell(cache_fname)
                     cell.insert(pya.DCellInstArray(retrieved_cell.cell_index(),
                                                    pya.DTrans(pya.DTrans.R0, pya.DPoint(0, 0))))
-                    self.ports = ports
                     # cell.move_tree(retrieved_cell)
                 else:
                     if layout.has_cell(cache_fname):
@@ -150,8 +149,7 @@ def cache_cell(cls, cache_dir=cache_dir):
                     # populating .gds and .pkl
                     empty_layout = pya.Layout()
                     empty_cell = empty_layout.create_cell(cell.name)
-                    filled_cell = draw(self, empty_cell)
-                    ports = self.ports
+                    filled_cell, ports = draw(self, empty_cell)
 
                     if debug:
                         print(f"Writing to cache: {cache_fname}: {filled_cell.name}, {ports}")
@@ -174,7 +172,7 @@ def cache_cell(cls, cache_dir=cache_dir):
                     cell.insert(pya.DCellInstArray(retrieved_cell.cell_index(),
                                                    pya.DTrans(pya.DTrans.R0, pya.DPoint(0, 0))))
 
-                return cell
+                return cell, ports
             return wrapper_draw
         if hasattr(cls, 'draw') and cls.draw.__name__ != 'wrapper_draw':
             setattr(cls, 'draw', cache_decorator(cls.draw))

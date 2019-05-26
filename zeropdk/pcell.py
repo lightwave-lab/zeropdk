@@ -2,7 +2,7 @@ import os
 from copy import copy, deepcopy
 from typing import Dict, List, Tuple, Any
 import logging
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 
 import klayout.db as kdb
 
@@ -35,21 +35,25 @@ class PCellParameter:
       default     -> the default value
       choices     -> ([ [ d, v ], ...) choice descriptions/value for choice type
     """
-    def __init__(self, *,
-            name,
-            type=None,
-            description="No description",
-            default=None,
-            unit=None,
-            readonly=False,
-            choices=None):
+
+    def __init__(
+        self,
+        *,
+        name,
+        type=None,
+        description="No description",
+        default=None,
+        unit=None,
+        readonly=False,
+        choices=None,
+    ):
         self.name: str = name
         if type is None and default is not None:
             self.type = python_type(default)
         elif type is not None:
             self.type = type
         else:
-            raise RuntimeError('Unkown parameter type, cannot determine from default.')
+            raise RuntimeError("Unkown parameter type, cannot determine from default.")
 
         self.description: str = description
         self.default = default
@@ -58,13 +62,15 @@ class PCellParameter:
         self.choices: List[Tuple[str, Any]] = choices
 
     def parse(self, value):
-        ''' Makes sure that the value is of a certain type'''
+        """ Makes sure that the value is of a certain type"""
         if self.type is None:
             new_type = type(value)
             self.type = new_type
             logger.warning(
                 "'{name}' type is unknown. Setting to '{typename}'".format(
-                    name=self.name, typename=new_type.__qualname__))
+                    name=self.name, typename=new_type.__qualname__
+                )
+            )
             return value
 
         elif isinstance(value, self.type):
@@ -76,9 +82,56 @@ class PCellParameter:
             raise TypeError(
                 "Cannot set '{name}' to {value}. "
                 "Expected {etype}, got {type}.".format(
-                    name=self.name, value=repr(value),
+                    name=self.name,
+                    value=repr(value),
                     etype=repr(self.type.__qualname__),
-                    type=repr(type(value).__qualname__)))
+                    type=repr(type(value).__qualname__),
+                )
+            )
+
+
+class objectview(MutableMapping):
+    """ Basically allows us to access dictionary values as dict.x
+        rather than dict['x']
+
+        The fact that it is a MutableMapping means that it is essentially
+        a writable dictionary. We recommend you only use it as read-only.
+
+    """
+
+    def __init__(self, d):
+        self.orig_d = d
+
+    def __getattr__(self, name):
+        return self.orig_d[name]
+
+    def __setattr__(self, name, value):
+        if name in ('orig_d'):
+            return super().__setattr__(name, value)
+        self.orig_d[name] = value
+
+    def __setitem__(self, name, value):
+        self.orig_d[name] = value
+
+    def __delitem__(self, name):
+        del self.orig_d[name]
+
+    def __getitem__(self, item):
+        return self.orig_d[item]
+
+    def __iter__(self):
+        return self.orig_d.__iter__()
+
+    def __len__(self):
+        return self.orig_d.__len__()
+
+    def __add__(self, other):
+        new_dict = copy(self.orig_d)
+        new_dict.update(other)
+        return new_dict
+
+    def __repr__(self):
+        return 'objectview({})'.format(repr(self.orig_d))
 
 
 # https://stackoverflow.com/questions/3387691/how-to-perfectly-override-a-dict
@@ -132,9 +185,9 @@ class ParamContainer(Mapping):
         return value
 
     def __setattr__(self, name, new_value):
-        ''' Set a parameter instead of an instance attribute.'''
+        """ Set a parameter instead of an instance attribute."""
 
-        protected_list = ('_container', '_current_values')
+        protected_list = ("_container", "_current_values")
         if name in protected_list:
             return super().__setattr__(name, new_value)
         else:
@@ -188,7 +241,7 @@ class Port(object):
         return f"({self.name}, {self.position})"
 
     def draw(self, cell, layer):
-        ''' Draws this port on cell's layer using klayout.db'''
+        """ Draws this port on cell's layer using klayout.db"""
         if self.name.startswith("el"):
             pin_length = self.width
         else:
@@ -198,18 +251,76 @@ class Port(object):
         ex = self.direction
 
         # Place a Path around the port pointing towards its exit
-        port_path = kdb.DPath([self.position - 0.5 * pin_length * ex,
-                       self.position + 0.5 * pin_length * ex], self.width)
+        port_path = kdb.DPath(
+            [
+                self.position - 0.5 * pin_length * ex,
+                self.position + 0.5 * pin_length * ex,
+            ],
+            self.width,
+        )
         cell.shapes(layer).insert(port_path)
         # pin_rectangle = rectangle(self.position, self.width,
         #                           pin_length, ex, ey)
         # cell.shapes(layer).insert(pin_rectangle)
 
         # Place a text object annotating the name of the port
-        cell.shapes(layer).insert(kdb.DText(self.name, kdb.DTrans(
-            kdb.DTrans.R0, self.position.x, self.position.y), min(pin_length, 20), 0))
+        cell.shapes(layer).insert(
+            kdb.DText(
+                self.name,
+                kdb.DTrans(kdb.DTrans.R0, self.position.x, self.position.y),
+                min(pin_length, 20),
+                0,
+            )
+        )
 
         return self
+
+
+def place_cell(
+    parent_cell,
+    pcell,
+    ports_dict,
+    placement_origin,
+    relative_to=None,
+    transform_into=False,
+):
+    """ Places an pya cell and return ports with updated positions
+    Args:
+        parent_cell: cell to place into
+        pcell, ports_dict: result of KLayoutPCell.pcell call
+        placement_origin: pya.Point object to be used as origin
+        relative_to: port name
+            the cell is placed so that the port is located at placement_origin
+        transform_into:
+            if used with relative_into, transform the cell's coordinate system
+            so that its origin is in the given port.
+
+    Returns:
+        ports(dict): key:port.name, value: geometry.Port with positions relative to parent_cell's origin
+    """
+
+    ports = ports_dict
+    cell = pcell
+
+    port_offset = placement_origin
+    if relative_to is not None:
+        offset = ports[relative_to].position
+        port_offset = placement_origin - offset
+        if transform_into:
+            # print(type(pcell))
+            offset_transform = kdb.DTrans(kdb.DTrans.R0, -offset)
+            for instance in cell.each_inst():
+                instance.transform(offset_transform)
+            cell.transform_into(offset_transform)
+        else:
+            placement_origin = placement_origin - offset
+    parent_cell.insert_cell(cell, placement_origin, 0)
+
+    new_ports = deepcopy(ports)
+    for port in new_ports.values():
+        port.position += port_offset
+
+    return new_ports
 
 
 class PCell:
@@ -219,7 +330,6 @@ class PCell:
     # properties. The logic for this can be found in __new__ method
     # below
     params: ParamContainer = ParamContainer()
-    ports: Dict[str, Port] = {}
     _cell: kdb.Cell = None
 
     def draw(self, cell):
@@ -246,7 +356,6 @@ class PCell:
                     new_params = new_params.merge(klass.params)
             new_params = new_params.merge(cls.params)
             obj.params = new_params
-            obj.ports = copy(cls.ports)
 
         return obj
 
@@ -260,8 +369,21 @@ class PCell:
             if name in self.params._container:
                 setattr(self.params, name, p_value)
             else:
-                logger.debug("Ignoring '{name}' parameter in {klass}."
-                    .format(name=name, klass=self.__class__.__qualname__))
+                logger.debug(
+                    "Ignoring '{name}' parameter in {klass}.".format(
+                        name=name, klass=self.__class__.__qualname__
+                    )
+                )
+
+    def get_cell_params(self):
+        """ returns a *copy* of the parameter dictionary
+
+            Returns:
+                object: objectview of full parameter structure
+                access with cp.name instead of cp['name']
+        """
+        cell_params = dict(self.params)
+        return objectview(cell_params)
 
     def new_cell(self, layout):
         # A cell is only created once per instance.
@@ -271,15 +393,41 @@ class PCell:
         self._cell = layout.create_cell(self.name)
         return self.draw(self._cell)
 
-    def add_port(self, port: Port):
-        self.ports[port.name] = port
+    def place_cell(
+        self, parent_cell, placement_origin, relative_to=None, transform_into=False
+    ):
+        """ Places this pcell into parent_cell and return ports with
+            updated position and orientation.
+        Args:
+            parent_cell: cell to place into
+            placement_origin: pya.Point object to be used as origin
+            relative_to: port name
+                the cell is placed so that the port is located at placement_origin
+            transform_into:
+                if used with relative_into, transform the cell's coordinate system
+                so that its origin is in the given port.
 
-    def reset_ports(self):
-        self.ports = dict()
+        Returns:
+            ports(dict):
+                key:port.name,
+                value: geometry.Port with positions relative to parent_cell's origin
+        """
+        layout = parent_cell.layout()
+
+        cell, ports = self.new_cell(layout)
+
+        return place_cell(
+            parent_cell,
+            cell,
+            ports,
+            placement_origin,
+            relative_to=relative_to,
+            transform_into=transform_into,
+        )
 
 
 def GDSCell(cell_name, filename, gds_dir):
-    '''
+    """
         Args:
             cell_name: cell within that file.
             filename: is the gds file name.
@@ -287,7 +435,7 @@ def GDSCell(cell_name, filename, gds_dir):
 
         Returns:
             (class) a GDS_cell_base class that can be inherited
-    '''
+    """
 
     assert gds_dir is not None
 
@@ -299,8 +447,7 @@ def GDSCell(cell_name, filename, gds_dir):
         def __init__(self, name=cell_name, params=None):
             PCell.__init__(self, name=name, params=params)
 
-        def draw(self, cell):
-            layout = cell.layout()
+        def get_gds_cell(self, layout):
             filepath = os.path.join(gds_dir, filename)
 
             # Attempt to read from cache first
@@ -309,62 +456,24 @@ def GDSCell(cell_name, filename, gds_dir):
             else:
                 gdscell = layout.read_cell(cell_name, filepath)
             self._cell_cache[(cell_name, filepath, layout)] = gdscell
+            return gdscell
 
-            origin = kdb.DPoint(0, 0)
+        def draw(self, cell):
+            # Implement it like this:
+            # layout = cell.layout()
+            # gdscell = self.get_gds_cell(layout)
 
-            # TODO: refactor this.
-            # Idea: add default ex, ey parameters to every PCell
-            if 'angle_ex' in self.params:
-                angle = self.params.angle_ex
-            else:
-                angle = 0
-
-            cell.insert_cell(gdscell, origin, angle)
-            return cell
+            # origin = kdb.DPoint(0, 0)
+            # angle = 0
+            # cell.insert_cell(gdscell, origin, angle)
+            # return cell, {}
+            raise NotImplementedError()
 
     return GDS_cell_base
 
 
-def place_cell(parent_cell, pcell, ports_dict, placement_origin, relative_to=None, transform_into=False):
-    """ Places an pya cell and return ports with updated positions
-    Args:
-        parent_cell: cell to place into
-        pcell, ports_dict: result of KLayoutPCell.pcell call
-        placement_origin: pya.Point object to be used as origin
-        relative_to: port name
-            the cell is placed so that the port is located at placement_origin
-        transform_into:
-            if used with relative_into, transform the cell's coordinate system
-            so that its origin is in the given port.
-
-    Returns:
-        ports(dict): key:port.name, value: geometry.Port with positions relative to parent_cell's origin
-    """
-    offset = kdb.DVector(0, 0)
-    port_offset = placement_origin
-    if relative_to is not None:
-        offset = ports_dict[relative_to].position
-        port_offset = placement_origin - offset
-        if transform_into:
-            # print(type(pcell))
-            offset_transform = kdb.DTrans(kdb.DTrans.R0, -offset)
-            for instance in pcell.each_inst():
-                instance.transform(offset_transform)
-            pcell.transform_into(offset_transform)
-        else:
-            placement_origin = placement_origin - offset
-
-    transformation = kdb.DTrans(kdb.Trans.R0, placement_origin)
-    instance = kdb.DCellInstArray(pcell.cell_index(), transformation)
-    parent_cell.insert(instance)
-    for port in ports_dict.values():
-        port.position += port_offset
-
-    return ports_dict
-
-
 def port_to_pin_helper(ports_list, cell, layerPinRec):
-    ''' Draws port shapes for visual help in KLayout. '''
+    """ Draws port shapes for visual help in KLayout. """
     # Create the pins, as short paths:
     # from siepic_tools.config import PIN_LENGTH
     PIN_LENGTH = 100
@@ -378,7 +487,16 @@ def port_to_pin_helper(ports_list, cell, layerPinRec):
 
         port_position_i = port.position.to_itype(dbu)
         cell.shapes(layerPinRec).insert(
-            kdb.DPath([port.position - 0.5 * pin_length * port.direction,
-                       port.position + 0.5 * pin_length * port.direction], port.width).to_itype(dbu))
-        cell.shapes(layerPinRec).insert(kdb.Text(port.name, kdb.Trans(
-            kdb.Trans.R0, port_position_i.x, port_position_i.y))).text_size = 2 / dbu
+            kdb.DPath(
+                [
+                    port.position - 0.5 * pin_length * port.direction,
+                    port.position + 0.5 * pin_length * port.direction,
+                ],
+                port.width,
+            ).to_itype(dbu)
+        )
+        cell.shapes(layerPinRec).insert(
+            kdb.Text(
+                port.name, kdb.Trans(kdb.Trans.R0, port_position_i.x, port_position_i.y)
+            )
+        ).text_size = (2 / dbu)
