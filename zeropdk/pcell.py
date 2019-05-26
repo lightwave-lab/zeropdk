@@ -46,8 +46,11 @@ class PCellParameter:
         self.name: str = name
         if type is None and default is not None:
             self.type = python_type(default)
-        else:
+        elif type is not None:
             self.type = type
+        else:
+            raise RuntimeError('Unkown parameter type, cannot determine from default.')
+
         self.description: str = description
         self.default = default
         self.unit: str = unit

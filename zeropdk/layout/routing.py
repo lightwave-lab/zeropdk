@@ -211,7 +211,7 @@ def compute_paths_from_clusters(ports_clusters, layer, ex, pitch=None, middle_ta
             else:
                 is_to_bottom = True or is_to_bottom
 
-        assert not (is_to_bottom and is_to_top)  # they can't both be true
+        assert not (is_to_bottom and is_to_top)  # there must be a line dividing the top and bottom port rows
 
         if is_to_top:
             offset_port_from = max([port_from.position * ey for port_from, _ in ports_iterator])
