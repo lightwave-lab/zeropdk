@@ -364,7 +364,7 @@ class PCell:
 
         return obj
 
-    def __init__(self, *, name: str, params=None):
+    def __init__(self, name: str, params=None):
         self.name = name
         if params is not None:
             self.set_param(**params)
