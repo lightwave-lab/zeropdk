@@ -26,7 +26,7 @@ def main():
     metadata = dict(
         name="zeropdk",
         version=release,
-        description="Lightwave Lab instrumen",
+        description="PDK factory for klayout",
         long_description=readme,
         license=license_text.split("\n")[0],
         python_requires=">=3.6",
@@ -41,7 +41,6 @@ def main():
             "License :: OSI Approved :: MIT License",
             "Operating System :: OS Independent",
             "Topic :: Scientific/Engineering",
-            "Framework :: Jupyter",
         ),
         install_requires=["numpy", "klayout", "scipy"],
     )
