@@ -19,17 +19,17 @@ def top_cell():
 
 
 def test_pad_pcell(top_cell):
-    pad = DCPad(name='testname')
+    pad = DCPad(name="testname")
     pad.params.layer_metal = kdb.LayerInfo(1, 0)
     pad.params.layer_opening = kdb.LayerInfo(2, 0)
 
     # This will get automatically converted to LayerInfo
     # No Error
-    pad.params.layer_metal = '1/0'
+    pad.params.layer_metal = "1/0"
 
     # TODO set defaults here
     TOP, layout = top_cell()
     cell = pad.new_cell(layout)
     origin, angle = kdb.DPoint(0, 0), 0
     TOP.insert_cell(cell, origin, angle)
-    TOP.write('tests/tmp/pad.gds')
+    TOP.write("tests/tmp/pad.gds")

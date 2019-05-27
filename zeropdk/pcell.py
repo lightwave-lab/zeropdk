@@ -106,7 +106,7 @@ class objectview(MutableMapping):
         return self.orig_d[name]
 
     def __setattr__(self, name, value):
-        if name in ('orig_d'):
+        if name in ("orig_d"):
             return super().__setattr__(name, value)
         self.orig_d[name] = value
 
@@ -131,7 +131,7 @@ class objectview(MutableMapping):
         return new_dict
 
     def __repr__(self):
-        return 'objectview({})'.format(repr(self.orig_d))
+        return "objectview({})".format(repr(self.orig_d))
 
 
 # https://stackoverflow.com/questions/3387691/how-to-perfectly-override-a-dict
@@ -155,6 +155,11 @@ class ParamContainer(Mapping):
     _current_values = None
 
     def __init__(self, *args):
+        """ Two ways of initializing:
+            1. ParamContainer(pc_obj), where pc_obj is another param_container
+            2. ParamContainer(param1, param2, param3, ...), where param is of type
+                PCellParameter
+        """
         self._container = dict()
         self._current_values = dict()
 

@@ -2,17 +2,14 @@ import klayout.db as kdb
 from klayout.db import Cell, DPoint
 
 
-def cell_insert_cell(cell: Cell, other_cell: Cell,
-                     origin: DPoint, angle: float):
+def cell_insert_cell(cell: Cell, other_cell: Cell, origin: DPoint, angle: float):
     mag = 1
     rot = angle
     mirrx = False
     u = DPoint(origin)
     trans = kdb.DCplxTrans(mag, rot, mirrx, u)
 
-    cell.insert(
-        kdb.DCellInstArray(other_cell.cell_index(),
-                           trans))
+    cell.insert(kdb.DCellInstArray(other_cell.cell_index(), trans))
     return cell
 
 

@@ -30,22 +30,27 @@ def patch_simple_polygon(backend):
                 ex = backend.DPoint(1, 0)
             ey = rotate90(ex)
 
-            polygon_dpoints_transformed = [center + p.x *
-                                           ex + p.y * ey for p in self.each_point()]
+            polygon_dpoints_transformed = [
+                center + p.x * ex + p.y * ey for p in self.each_point()
+            ]
             self.assign(_SimplePolygon(polygon_dpoints_transformed))
             return self
 
         def clip(self, x_bounds=(-np.inf, np.inf), y_bounds=(-np.inf, np.inf)):
-            ''' Clips the polygon at four possible boundaries.
+            """ Clips the polygon at four possible boundaries.
             The boundaries are tuples based on absolute coordinates and cartesian axes.
             This method is very powerful when used with transform_and_rotate.
-            '''
+            """
             # Add points exactly at the boundary, so that the filter below works.
             x_bounds = (np.min(x_bounds), np.max(x_bounds))
             y_bounds = (np.min(y_bounds), np.max(y_bounds))
 
-            check_within_bounds = lambda p: x_bounds[0] <= p.x and x_bounds[1] >= p.x and \
-                y_bounds[0] <= p.y and y_bounds[1] >= p.y
+            check_within_bounds = (
+                lambda p: x_bounds[0] <= p.x
+                and x_bounds[1] >= p.x
+                and y_bounds[0] <= p.y
+                and y_bounds[1] >= p.y
+            )
 
             def intersect_left_boundary(p1, p2, x_bounds, y_bounds):
                 left_most, right_most = (p1, p2) if p1.x < p2.x else (p2, p1)
@@ -54,10 +59,15 @@ def patch_simple_polygon(backend):
                     # intersection only if right_most crosses x_bound[0]
                     if right_most.x > x_bounds[0]:
                         # outside the box, on the left
-                        y_intersect = np.interp(x_bounds[0], [left_most.x, right_most.x], [
-                                                left_most.y, right_most.y])
+                        y_intersect = np.interp(
+                            x_bounds[0],
+                            [left_most.x, right_most.x],
+                            [left_most.y, right_most.y],
+                        )
                         if y_bounds[0] < y_intersect and y_bounds[1] > y_intersect:
-                            return backend.DPoint(float(x_bounds[0]), float(y_intersect))
+                            return backend.DPoint(
+                                float(x_bounds[0]), float(y_intersect)
+                            )
                 return None
 
             def intersect(p1, p2, x_bounds, y_bounds):
@@ -66,7 +76,10 @@ def patch_simple_polygon(backend):
 
                 def rotate_bounds90(x_bounds, y_bounds, i_times):
                     for i in range(i_times):
-                        x_bounds, y_bounds = (-y_bounds[1], -y_bounds[0]), (x_bounds[0], x_bounds[1])
+                        x_bounds, y_bounds = (
+                            (-y_bounds[1], -y_bounds[0]),
+                            (x_bounds[0], x_bounds[1]),
+                        )
                     return x_bounds, y_bounds
 
                 for i in range(4):
@@ -116,9 +129,13 @@ def patch_simple_polygon(backend):
             for point in polygon_dpoints:
                 # compute new intersecting point and add to list
                 intersected_points, last_intersect = intersect(
-                    previous_point, point, x_bounds, y_bounds)
-                if previous_intersect is not None and last_intersect is not None and \
-                        last_intersect != previous_intersect:
+                    previous_point, point, x_bounds, y_bounds
+                )
+                if (
+                    previous_intersect is not None
+                    and last_intersect is not None
+                    and last_intersect != previous_intersect
+                ):
                     if check_within_bounds(point):
                         # this means that we are entering the box at a different edge
                         # need to add the edge points
@@ -142,6 +159,7 @@ def patch_simple_polygon(backend):
         def layout(self, cell, layer):
             """ Places polygon as a shape into a cell at a particular layer."""
             from zeropdk.layout import insert_shape
+
             return insert_shape(cell, layer, self)
 
         def layout_drc_exclude(self, cell, drclayer, ex):
@@ -178,11 +196,13 @@ def patch_simple_polygon(backend):
 
             dpoly = backend.DPolygon(self)
             dpoly.size(dx, 5)
-            dpoly = backend.EdgeProcessor().simple_merge_p2p([dpoly.to_itype(dbu)], False, False, 1)
+            dpoly = backend.EdgeProcessor().simple_merge_p2p(
+                [dpoly.to_itype(dbu)], False, False, 1
+            )
             dpoly = dpoly[0].to_dtype(dbu)  # backend.DPolygon
 
             def norm(p):
-                return sqrt(p.x**2 + p.y**2)
+                return sqrt(p.x ** 2 + p.y ** 2)
 
             # Filter edges if they are too small
             points = list(dpoly.each_point_hull())

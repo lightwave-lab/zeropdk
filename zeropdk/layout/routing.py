@@ -3,10 +3,9 @@ import os
 import sys
 import logging
 from contextlib import contextmanager
+
 # from siepic_ebeam_pdk import EBEAM_TECH
-from zeropdk.layout.geometry import rotate90, \
-    manhattan_intersection, \
-    cluster_ports
+from zeropdk.layout.geometry import rotate90, manhattan_intersection, cluster_ports
 from zeropdk.layout.waveguides import layout_waveguide, layout_waveguide_angle
 
 logger = logging.getLogger()
@@ -38,6 +37,7 @@ def layout_ebeam_waveguide_from_points(cell, points_list, radius=None, width=Non
         R, then the output will be a 90-degree arc of radius R.
     """
     from math import floor
+
     TECHNOLOGY = EBEAM_TECH
     if radius is None:
         radius = WAVEGUIDE_RADIUS
@@ -55,7 +55,10 @@ def layout_ebeam_waveguide_from_points(cell, points_list, radius=None, width=Non
         """
         posx = abs(points_list[i + 1].x - points_list[i].x)
         posy = abs(points_list[i + 1].y - points_list[i].y)
-        if abs(points_list[i + 1].x - points_list[i].x) > 0 and abs(points_list[i + 1].y - points_list[i].y) > 0:
+        if (
+            abs(points_list[i + 1].x - points_list[i].x) > 0
+            and abs(points_list[i + 1].y - points_list[i].y) > 0
+        ):
             if posx < posy:
                 points_list[i + 1].x = points_list[i].x
             else:
@@ -64,15 +67,20 @@ def layout_ebeam_waveguide_from_points(cell, points_list, radius=None, width=Non
     wg_dpath = pya.DPath(points_list, 0.5)
     layout = cell.layout()
     with suppress_stdout():
-        wg_cell = layout.create_cell("Waveguide", TECHNOLOGY['technology_name'],
-                                     {"path": wg_dpath,
-                                      "radius": radius,
-                                      "width": width,
-                                      "layers": ['Si'],
-                                      "widths": [width],
-                                      "offsets": [0]})
+        wg_cell = layout.create_cell(
+            "Waveguide",
+            TECHNOLOGY["technology_name"],
+            {
+                "path": wg_dpath,
+                "radius": radius,
+                "width": width,
+                "layers": ["Si"],
+                "widths": [width],
+                "offsets": [0],
+            },
+        )
 
-    layerSi = layout.layer(TECHNOLOGY['Si'])
+    layerSi = layout.layer(TECHNOLOGY["Si"])
     # let's just get the shapes
     cell.shapes(layerSi).insert(wg_cell.shapes(layerSi))
 
@@ -91,8 +99,9 @@ def ensure_layer(layout, layer):
         return
 
 
-def common_layout_manhattan_traces(cell, layer1, layer2, layervia, via_cell_placer,
-                                   path, ex, initiate_with_via=False):
+def common_layout_manhattan_traces(
+    cell, layer1, layer2, layervia, via_cell_placer, path, ex, initiate_with_via=False
+):
     """ Lays out a manhattan trace, potentially with vias
 
         Args:
@@ -114,8 +123,7 @@ def common_layout_manhattan_traces(cell, layer1, layer2, layervia, via_cell_plac
 
     first_point, _, first_width = path[0]
     if initiate_with_via:
-        via_cell_placer(cell, first_point, first_width,
-                        layer1, layer2, layervia, ex)
+        via_cell_placer(cell, first_point, first_width, layer1, layer2, layervia, ex)
 
     points_list = list()
     widths_list = list()
@@ -137,8 +145,13 @@ def common_layout_manhattan_traces(cell, layer1, layer2, layervia, via_cell_plac
         else:  # time to place a via and layout
             points_list.append(point)
             widths_list.append(width)
-            layout_waveguide(cell, ensure_layer(layout, previous_layer),
-                             points_list, widths_list, smooth=True)
+            layout_waveguide(
+                cell,
+                ensure_layer(layout, previous_layer),
+                points_list,
+                widths_list,
+                smooth=True,
+            )
 
             via_cell_placer(cell, point, width, layer1, layer2, layervia, ex)
 
@@ -149,23 +162,28 @@ def common_layout_manhattan_traces(cell, layer1, layer2, layervia, via_cell_plac
 
     # layout last trace
     if len(points_list) >= 2:
-        layout_waveguide(cell, ensure_layer(layout, previous_layer),
-                         points_list, widths_list, smooth=True)
+        layout_waveguide(
+            cell,
+            ensure_layer(layout, previous_layer),
+            points_list,
+            widths_list,
+            smooth=True,
+        )
 
     return path
 
 
 def layout_manhattan_traces(cell, path, ex):
-
     def via_cell_placer(*args, **kwargs):
         pass
 
-    return common_layout_manhattan_traces(cell, None, None, None, via_cell_placer,
-                                          path, ex, initiate_with_via=False)
+    return common_layout_manhattan_traces(
+        cell, None, None, None, via_cell_placer, path, ex, initiate_with_via=False
+    )
 
 
 def connect_ports_L(cell, cplayer, ports_from, ports_to, ex):
-    ''' Connects ports ports_from to ports_to, always leaving vertically'''
+    """ Connects ports ports_from to ports_to, always leaving vertically"""
 
     ey = rotate90(ex)
     for port_from, port_to in zip(ports_from, ports_to):
@@ -174,13 +192,23 @@ def connect_ports_L(cell, cplayer, ports_from, ports_to, ex):
         o_x = ex if port_to.position * ex > port_from.position * ex else -ex
 
         middle_point = manhattan_intersection(port_from.position, port_to.position, ex)
-        layout_waveguide(cell, ensure_layer(cell.layout(), cplayer), [
-                         port_from.position, middle_point + port_to.width * 0.5 * o_y], port_from.width)
-        layout_waveguide(cell, ensure_layer(cell.layout(), cplayer), [
-                         middle_point - port_from.width * 0.5 * o_x, port_to.position], port_to.width)
+        layout_waveguide(
+            cell,
+            ensure_layer(cell.layout(), cplayer),
+            [port_from.position, middle_point + port_to.width * 0.5 * o_y],
+            port_from.width,
+        )
+        layout_waveguide(
+            cell,
+            ensure_layer(cell.layout(), cplayer),
+            [middle_point - port_from.width * 0.5 * o_x, port_to.position],
+            port_to.width,
+        )
 
 
-def compute_paths_from_clusters(ports_clusters, layer, ex, pitch=None, middle_taper=False, initial_height=0):
+def compute_paths_from_clusters(
+    ports_clusters, layer, ex, pitch=None, middle_taper=False, initial_height=0
+):
     """
     provide a pitch for optical waveguides. electrical waveguides are figured
     out automatically.
@@ -211,12 +239,18 @@ def compute_paths_from_clusters(ports_clusters, layer, ex, pitch=None, middle_ta
             else:
                 is_to_bottom = True or is_to_bottom
 
-        assert not (is_to_bottom and is_to_top)  # there must be a line dividing the top and bottom port rows
+        assert not (
+            is_to_bottom and is_to_top
+        )  # there must be a line dividing the top and bottom port rows
 
         if is_to_top:
-            offset_port_from = max([port_from.position * ey for port_from, _ in ports_iterator])
+            offset_port_from = max(
+                [port_from.position * ey for port_from, _ in ports_iterator]
+            )
         else:
-            offset_port_from = min([port_from.position * ey for port_from, _ in ports_iterator])
+            offset_port_from = min(
+                [port_from.position * ey for port_from, _ in ports_iterator]
+            )
 
         for port_from, port_to in ports_iterator:
 
@@ -234,13 +268,21 @@ def compute_paths_from_clusters(ports_clusters, layer, ex, pitch=None, middle_ta
 
             height += new_pitch
             new_height = height + abs(offset_port_from - P0 * ey)
-            paths.append(append_Z_trace_vertical([(P0, layer, port_from.width)],
-                                                 (P3, layer, port_to.width),
-                                                 new_height, ex, middle_taper=middle_taper))
+            paths.append(
+                append_Z_trace_vertical(
+                    [(P0, layer, port_from.width)],
+                    (P3, layer, port_to.width),
+                    new_height,
+                    ex,
+                    middle_taper=middle_taper,
+                )
+            )
     return paths
 
 
-def bus_route_Z(cell, ports_from, ports_to, ex, pitch=WAVEGUIDE_RADIUS, radius=WAVEGUIDE_RADIUS):
+def bus_route_Z(
+    cell, ports_from, ports_to, ex, pitch=WAVEGUIDE_RADIUS, radius=WAVEGUIDE_RADIUS
+):
     port_clusters = cluster_ports(ports_from, ports_to, ex)
     paths = compute_paths_from_clusters(port_clusters, None, ex, pitch)
 
@@ -249,7 +291,9 @@ def bus_route_Z(cell, ports_from, ports_to, ex, pitch=WAVEGUIDE_RADIUS, radius=W
         layout_ebeam_waveguide_from_points(cell, path, radius)
 
 
-def append_Z_trace_vertical(path, new_point, height, ex, middle_layer=None, middle_taper=False):
+def append_Z_trace_vertical(
+    path, new_point, height, ex, middle_layer=None, middle_taper=False
+):
     """ Adds new_point to the path list plus TWO Z or S manhattan interesections.
     Args:
         path: list of tuples containing necessary info (pya.DPoint, layer, width)
@@ -319,6 +363,7 @@ def append_Z_trace_vertical(path, new_point, height, ex, middle_layer=None, midd
 
 # TODO: Reorganize
 import numpy as np
+
 debug = False
 
 from zeropdk.layout.geometry import bezier_optimal
@@ -326,8 +371,8 @@ from math import pi
 
 
 def layout_connect_ports(cell, layer, port_from, port_to, smooth=True):
-    ''' Places an "optimal" bezier curve from port_from to port_to.
-    '''
+    """ Places an "optimal" bezier curve from port_from to port_to.
+    """
 
     if port_from.name.startswith("el"):
         assert port_to.name.startswith("el")
@@ -347,14 +392,16 @@ def layout_connect_ports(cell, layer, port_from, port_to, smooth=True):
         for point in curve:
             print(point)
         print(f"bezier_optimal({P0}, {P3}, {angle_from}, {angle_to})")
-    return layout_waveguide(cell, layer, curve, [port_from.width, port_to.width], smooth=smooth)
+    return layout_waveguide(
+        cell, layer, curve, [port_from.width, port_to.width], smooth=smooth
+    )
 
 
 def layout_connect_ports_angle(cell, layer, port_from, port_to, angle):
-    ''' Places an "optimal" bezier curve from port_from to port_to, with a fixed orientation angle.
+    """ Places an "optimal" bezier curve from port_from to port_to, with a fixed orientation angle.
 
     Use when connecting ports that are like horizontal-in and horizontal-out.
-    '''
+    """
 
     if port_from.name.startswith("el"):
         assert port_to.name.startswith("el")
@@ -368,7 +415,9 @@ def layout_connect_ports_angle(cell, layer, port_from, port_to, angle):
         P3 = port_to.position
         curve = bezier_optimal(P0, P3, angle, angle)
 
-    return layout_waveguide_angle(cell, layer, curve, [port_from.width, port_to.width], angle)
+    return layout_waveguide_angle(
+        cell, layer, curve, [port_from.width, port_to.width], angle
+    )
 
 
 # @cache_cell

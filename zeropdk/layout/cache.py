@@ -6,7 +6,7 @@ import pickle
 
 layer_map_dict = dict()
 debug = False
-cache_dir = os.path.join(os.getcwd(), 'cache')
+cache_dir = os.path.join(os.getcwd(), "cache")
 
 
 def produce_hash(self):
@@ -14,20 +14,25 @@ def produce_hash(self):
 
     # copy source code of class and all its ancestors
     source_code = "".join(
-        [inspect.getsource(klass) for klass in self.__class__.__mro__ if issubclass(klass, PCell)])
+        [
+            inspect.getsource(klass)
+            for klass in self.__class__.__mro__
+            if issubclass(klass, PCell)
+        ]
+    )
 
     diff_params = dict(self.params)
 
-    long_hash_pcell = sha256((source_code +
-                              str(diff_params) +
-                              self.name).encode()).hexdigest()
+    long_hash_pcell = sha256(
+        (source_code + str(diff_params) + self.name).encode()
+    ).hexdigest()
     short_hash_pcell = long_hash_pcell[0:7]
     return short_hash_pcell
 
 
 def read_layout(layout, gds_filename):
-    ''' Reads the layout in the gds file and imports all cells into
-    layout without overwriting existing cells.'''
+    """ Reads the layout in the gds file and imports all cells into
+    layout without overwriting existing cells."""
     global layer_map_dict
     load_options = pya.LoadLayoutOptions()
     load_options.text_enabled = True
@@ -44,18 +49,16 @@ def read_layout(layout, gds_filename):
 
     lmap = layout.read(gds_filename, load_options)
     # in the new layout, get all cells names
-    cell_names2 = [(cell.cell_index(), cell.name)
-                   for cell in layout.each_cell()]
+    cell_names2 = [(cell.cell_index(), cell.name) for cell in layout.each_cell()]
 
     # make those cells point to older cells
     prune_cells_indices = []
     for i_duplicate, name_cached_cell in cell_names2:
         if name_cached_cell in cell_indices.keys():
-            if name_cached_cell.startswith('cache_'):
+            if name_cached_cell.startswith("cache_"):
                 for parent_inst_array in layout.cell(i_duplicate).each_parent_inst():
                     cell_instance = parent_inst_array.child_inst()
-                    cell_instance.cell = layout.cell(
-                        cell_indices[name_cached_cell])
+                    cell_instance.cell = layout.cell(cell_indices[name_cached_cell])
                 prune_cells_indices.append(i_duplicate)
             else:
                 # print('RENAME', name_cached_cell)
@@ -120,9 +123,9 @@ def cache_cell(cls, cache_dir=cache_dir):
                 short_hash_pcell = produce_hash(self)
 
                 # cache paths
-                cache_fname = f'cache_{self.__class__.__qualname__}_{short_hash_pcell}'
-                cache_fname_gds = cache_fname + '.gds'
-                cache_fname_pkl = cache_fname + '.klayout.pkl'
+                cache_fname = f"cache_{self.__class__.__qualname__}_{short_hash_pcell}"
+                cache_fname_gds = cache_fname + ".gds"
+                cache_fname_pkl = cache_fname + ".klayout.pkl"
 
                 os.makedirs(cache_dir, mode=0o775, exist_ok=True)
 
@@ -130,21 +133,27 @@ def cache_cell(cls, cache_dir=cache_dir):
                 cache_fpath_pkl = os.path.join(cache_dir, cache_fname_pkl)
 
                 if os.path.isfile(cache_fpath_gds) and os.path.isfile(cache_fpath_pkl):
-                    with open(cache_fpath_pkl, 'rb') as file:
+                    with open(cache_fpath_pkl, "rb") as file:
                         ports, read_short_hash_pcell, cellname = pickle.load(file)
                     if debug:
                         print(f"Reading from cache: {cache_fname}: {cellname}, {ports}")
                     else:
-                        print('r', end='', flush=True)
+                        print("r", end="", flush=True)
                     if not layout.has_cell(cache_fname):
                         read_layout(layout, cache_fpath_gds)
                     retrieved_cell = layout.cell(cache_fname)
-                    cell.insert(pya.DCellInstArray(retrieved_cell.cell_index(),
-                                                   pya.DTrans(pya.DTrans.R0, pya.DPoint(0, 0))))
+                    cell.insert(
+                        pya.DCellInstArray(
+                            retrieved_cell.cell_index(),
+                            pya.DTrans(pya.DTrans.R0, pya.DPoint(0, 0)),
+                        )
+                    )
                     # cell.move_tree(retrieved_cell)
                 else:
                     if layout.has_cell(cache_fname):
-                        print(f"WARNING: {cache_fname_gds} does not exist but {cache_fname} is in layout.")
+                        print(
+                            f"WARNING: {cache_fname_gds} does not exist but {cache_fname} is in layout."
+                        )
 
                     # populating .gds and .pkl
                     empty_layout = pya.Layout()
@@ -152,13 +161,15 @@ def cache_cell(cls, cache_dir=cache_dir):
                     filled_cell, ports = draw(self, empty_cell)
 
                     if debug:
-                        print(f"Writing to cache: {cache_fname}: {filled_cell.name}, {ports}")
+                        print(
+                            f"Writing to cache: {cache_fname}: {filled_cell.name}, {ports}"
+                        )
                     else:
-                        print('w', end='', flush=True)
+                        print("w", end="", flush=True)
 
                     cellname, filled_cell.name = filled_cell.name, cache_fname
                     filled_cell.write(cache_fpath_gds)
-                    with open(cache_fpath_pkl, 'wb') as file:
+                    with open(cache_fpath_pkl, "wb") as file:
                         pickle.dump((ports, short_hash_pcell, cellname), file)
 
                     # Make sure we delete the empty_layout to not grow
@@ -169,11 +180,17 @@ def cache_cell(cls, cache_dir=cache_dir):
 
                     read_layout(layout, cache_fpath_gds)
                     retrieved_cell = layout.cell(cache_fname)
-                    cell.insert(pya.DCellInstArray(retrieved_cell.cell_index(),
-                                                   pya.DTrans(pya.DTrans.R0, pya.DPoint(0, 0))))
+                    cell.insert(
+                        pya.DCellInstArray(
+                            retrieved_cell.cell_index(),
+                            pya.DTrans(pya.DTrans.R0, pya.DPoint(0, 0)),
+                        )
+                    )
 
                 return cell, ports
+
             return wrapper_draw
-        if hasattr(cls, 'draw') and cls.draw.__name__ != 'wrapper_draw':
-            setattr(cls, 'draw', cache_decorator(cls.draw))
+
+        if hasattr(cls, "draw") and cls.draw.__name__ != "wrapper_draw":
+            setattr(cls, "draw", cache_decorator(cls.draw))
     return cls

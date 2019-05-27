@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+
 # see manual for dataclasses in https://docs.python.org/3/library/dataclasses.html
 # dataclasses only exist in 3.7, with a possible backport for 3.6
 # I am aware of this issue but at the time of implementation I am not
@@ -29,5 +30,5 @@ class PCellMetadata:
     ports: Dict[str, Port] = field(default_factory=dict)
 
 
-x = PCellMetadata(ports={'a': Port('a', DPoint(1, 2), DPoint(1, 0), 10)})
+x = PCellMetadata(ports={"a": Port("a", DPoint(1, 2), DPoint(1, 0), 10)})
 print(x)

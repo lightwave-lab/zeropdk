@@ -1,4 +1,5 @@
 import klayout.db as pya
+
 # import zeropdk's tech
 
 from zeropdk.layout.geometry import bezier_optimal
@@ -29,10 +30,13 @@ def main():
 
     for i, angle_0 in enumerate(angles):
         for j, angle_3 in enumerate(angles):
-            curve = bezier_curve(origin + ey * i * 150 + ex * j * 150, angle_0, angle_3, ex, ey)
+            curve = bezier_curve(
+                origin + ey * i * 150 + ex * j * 150, angle_0, angle_3, ex, ey
+            )
             layout_waveguide(TOP, layer, curve, width=0.5)
 
     layout.write("bezier_waveguides.gds")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

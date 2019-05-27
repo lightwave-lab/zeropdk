@@ -1,4 +1,4 @@
-''' Utils to inspect klayout.db and create a tree of classes and methods.'''
+""" Utils to inspect klayout.db and create a tree of classes and methods."""
 
 import inspect
 from textwrap import indent, fill
@@ -12,13 +12,13 @@ from textwrap import indent, fill
 
 def wrapfill(str, width):
     paragraphs = []
-    for section in str.split('\n\n'):
-        paragraphs.append(fill(section.replace('\\', '\\\\'), width))
-    return '\n\n'.join(paragraphs)
+    for section in str.split("\n\n"):
+        paragraphs.append(fill(section.replace("\\", "\\\\"), width))
+    return "\n\n".join(paragraphs)
 
 
-print4 = lambda str: print(indent(wrapfill(str, 100 - 4), ' ' * 4))
-print8 = lambda str: print(indent(wrapfill(str, 100 - 8), ' ' * 8))
+print4 = lambda str: print(indent(wrapfill(str, 100 - 4), " " * 4))
+print8 = lambda str: print(indent(wrapfill(str, 100 - 8), " " * 8))
 
 
 def inspect_module(module):
@@ -31,7 +31,7 @@ def inspect_module(module):
 
 
 def inspect_class(klass):
-    ''' This was designed specifically for klayout.db'''
+    """ This was designed specifically for klayout.db"""
 
     # typically methods
     method_dict = dict(inspect.getmembers(klass, inspect.ismethoddescriptor))
@@ -71,6 +71,7 @@ def inspect_class(klass):
         print("")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import klayout.db
+
     inspect_module(klayout.db)

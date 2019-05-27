@@ -48,7 +48,9 @@ def rectangle(center, width, height, ex, ey):
     """
 
     if cross_prod(ex, ey) == 0:
-        raise RuntimeError('ex={} and ey={} are not orthogonal.'.format(repr(ex), repr(ey)))
+        raise RuntimeError(
+            "ex={} and ey={} are not orthogonal.".format(repr(ex), repr(ey))
+        )
 
     point1 = center - width / 2 * ex - height / 2 * ey
     point3 = center + width / 2 * ex + height / 2 * ey
@@ -113,13 +115,13 @@ from math import pi
 
 
 def layout_path(cell, layer, point_iterator, w):
-    ''' Simple wrapper for pya.DPath.'''
+    """ Simple wrapper for pya.DPath."""
     path = pya.DPath(list(point_iterator), w, 0, 0).to_itype(cell.layout().dbu)
     cell.shapes(layer).insert(pya.Path.from_dpath(path))
 
 
 def layout_path_with_ends(cell, layer, point_iterator, w):
-    ''' Simple wrapper for pya.DPath.'''
+    """ Simple wrapper for pya.DPath."""
     dpath = pya.DPath(list(point_iterator), w, w / 2, w / 2)
     cell.shapes(layer).insert(dpath)
 
@@ -161,8 +163,7 @@ def layout_ring(cell, layer, center, r, w):
     assert r - w / 2 > 0
     radius = r + w / 2
     arc_function = lambda t: np.array([radius * np.cos(t), radius * np.sin(t)])
-    t, coords = sample_function(arc_function,
-                                [0, 2 * pi], tol=0.002 / radius)
+    t, coords = sample_function(arc_function, [0, 2 * pi], tol=0.002 / radius)
 
     # create original waveguide poligon prior to clipping and rotation
     points_hull = [center + pya.DPoint(x, y) for x, y in zip(*coords)]
@@ -170,8 +171,7 @@ def layout_ring(cell, layer, center, r, w):
 
     radius = r - w / 2
     arc_function = lambda t: np.array([radius * np.cos(t), radius * np.sin(t)])
-    t, coords = sample_function(arc_function,
-                                [0, 2 * pi], tol=0.002 / radius)
+    t, coords = sample_function(arc_function, [0, 2 * pi], tol=0.002 / radius)
 
     # create original waveguide poligon prior to clipping and rotation
     points_hole = [center + pya.DPoint(x, y) for x, y in zip(*coords)]
@@ -197,9 +197,10 @@ def layout_circle(cell, layer, center, r):
     optimal sampling
     """
 
-    arc_function = lambda t: np.array([center.x + r * np.cos(t), center.y + r * np.sin(t)])
-    t, coords = sample_function(arc_function,
-                                [0, 2 * np.pi - 0.001], tol=0.002 / r)
+    arc_function = lambda t: np.array(
+        [center.x + r * np.cos(t), center.y + r * np.sin(t)]
+    )
+    t, coords = sample_function(arc_function, [0, 2 * np.pi - 0.001], tol=0.002 / r)
 
     # dbu = cell.layout().dbu
     dpoly = pya.DSimplePolygon([pya.DPoint(x, y) for x, y in zip(*coords)])
@@ -211,9 +212,18 @@ def layout_circle(cell, layer, center, r):
 layout_disk = layout_circle
 
 
-def layout_section(cell, layer, center, r2, theta_start, theta_end, ex=None,
-                   x_bounds=(-np.inf, np.inf), y_bounds=(-np.inf, np.inf)):
-    ''' Layout section of a circle.
+def layout_section(
+    cell,
+    layer,
+    center,
+    r2,
+    theta_start,
+    theta_end,
+    ex=None,
+    x_bounds=(-np.inf, np.inf),
+    y_bounds=(-np.inf, np.inf),
+):
+    """ Layout section of a circle.
     cell: layout cell to place the layout
     layer: which layer to use
     center: origin DPoint (not affected by ex)
@@ -222,23 +232,24 @@ def layout_section(cell, layer, center, r2, theta_start, theta_end, ex=None,
     x_bounds and y_bounds relative to the center, before rotation by ex.
     units in microns
     returns a dpolygon
-    '''
+    """
 
     assert r2 > 0
 
     # optimal sampling
     arc_function = lambda t: np.array([r2 * np.cos(t), r2 * np.sin(t)])
-    t, coords = sample_function(arc_function,
-                                [theta_start, theta_end], tol=0.002 / r2)
+    t, coords = sample_function(arc_function, [theta_start, theta_end], tol=0.002 / r2)
 
     # # This yields a better polygon
     if theta_end < theta_start:
         theta_start, theta_end = theta_end, theta_start
 
-    coords = np.insert(coords, 0, arc_function(theta_start - 0.001),
-                       axis=1)  # start the waveguide a little bit before
-    coords = np.append(coords, np.atleast_2d(arc_function(theta_end + 0.001)).T,
-                       axis=1)  # finish the waveguide a little bit after
+    coords = np.insert(
+        coords, 0, arc_function(theta_start - 0.001), axis=1
+    )  # start the waveguide a little bit before
+    coords = np.append(
+        coords, np.atleast_2d(arc_function(theta_end + 0.001)).T, axis=1
+    )  # finish the waveguide a little bit after
 
     # create original waveguide poligon prior to clipping and rotation
     dpoints_list = [pya.DPoint(x, y) for x, y in zip(*coords)]
@@ -253,8 +264,18 @@ def layout_section(cell, layer, center, r2, theta_start, theta_end, ex=None,
     return dpolygon
 
 
-def layout_arc(cell, layer, center, r, w, theta_start, theta_end, ex=None,
-               x_bounds=(-np.inf, np.inf), y_bounds=(-np.inf, np.inf)):
+def layout_arc(
+    cell,
+    layer,
+    center,
+    r,
+    w,
+    theta_start,
+    theta_end,
+    ex=None,
+    x_bounds=(-np.inf, np.inf),
+    y_bounds=(-np.inf, np.inf),
+):
     """ function to produce the layout of an arc
     cell: layout cell to place the layout
     layer: which layer to use
@@ -277,18 +298,20 @@ def layout_arc(cell, layer, center, r, w, theta_start, theta_end, ex=None,
         theta_start, theta_end = theta_end, theta_start
 
     arc_function = lambda t: np.array([r * np.cos(t), r * np.sin(t)])
-    t, coords = sample_function(arc_function,
-                                [theta_start, theta_end], tol=0.002 / r)
+    t, coords = sample_function(arc_function, [theta_start, theta_end], tol=0.002 / r)
 
     # # This yields a better polygon
-    coords = np.insert(coords, 0, arc_function(theta_start - 0.001),
-                       axis=1)  # start the waveguide a little bit before
-    coords = np.append(coords, np.atleast_2d(arc_function(theta_end + 0.001)).T,
-                       axis=1)  # finish the waveguide a little bit after
+    coords = np.insert(
+        coords, 0, arc_function(theta_start - 0.001), axis=1
+    )  # start the waveguide a little bit before
+    coords = np.append(
+        coords, np.atleast_2d(arc_function(theta_end + 0.001)).T, axis=1
+    )  # finish the waveguide a little bit after
 
     # create original waveguide poligon prior to clipping and rotation
     dpoints_list = [pya.DPoint(x, y) for x, y in zip(*coords)]
     from zeropdk.layout import waveguide_dpolygon
+
     dpolygon = waveguide_dpolygon(dpoints_list, w, cell.layout().dbu)
 
     # clip dpolygon to bounds
@@ -300,19 +323,41 @@ def layout_arc(cell, layer, center, r, w, theta_start, theta_end, ex=None,
     return dpolygon
 
 
-def layout_arc2(cell, layer, center, r1, r2, theta_start, theta_end, ex=None,
-                x_bounds=(-np.inf, np.inf), y_bounds=(-np.inf, np.inf)):
-    ''' modified layout_arc with r1 and r2, instead of r (radius) and w (width). '''
+def layout_arc2(
+    cell,
+    layer,
+    center,
+    r1,
+    r2,
+    theta_start,
+    theta_end,
+    ex=None,
+    x_bounds=(-np.inf, np.inf),
+    y_bounds=(-np.inf, np.inf),
+):
+    """ modified layout_arc with r1 and r2, instead of r (radius) and w (width). """
     r1, r2 = min(r1, r2), max(r1, r2)
 
     r = (r1 + r2) / 2
-    w = (r2 - r1)
-    return layout_arc(cell, layer, center, r, w, theta_start, theta_end,
-                      ex=ex, x_bounds=x_bounds, y_bounds=y_bounds)
+    w = r2 - r1
+    return layout_arc(
+        cell,
+        layer,
+        center,
+        r,
+        w,
+        theta_start,
+        theta_end,
+        ex=ex,
+        x_bounds=x_bounds,
+        y_bounds=y_bounds,
+    )
 
 
-def layout_arc_with_drc_exclude(cell, layer, drc_layer, center, r, w, theta_start, theta_end, ex=None, **kwargs):
-    ''' Layout arc with drc exclude squares '''
+def layout_arc_with_drc_exclude(
+    cell, layer, drc_layer, center, r, w, theta_start, theta_end, ex=None, **kwargs
+):
+    """ Layout arc with drc exclude squares """
     dpoly = layout_arc(cell, layer, center, r, w, theta_start, theta_end, ex, **kwargs)
     dpoly.layout_drc_exclude(cell, drc_layer, ex)
     return dpoly
