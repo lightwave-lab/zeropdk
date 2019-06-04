@@ -29,7 +29,8 @@ def test_pad_pcell(top_cell):
 
     # TODO set defaults here
     TOP, layout = top_cell()
-    cell = pad.new_cell(layout)
+    cell, ports = pad.new_cell(layout)
+    assert "el0" in ports
     origin, angle = kdb.DPoint(0, 0), 0
     TOP.insert_cell(cell, origin, angle)
     TOP.write("tests/tmp/pad.gds")

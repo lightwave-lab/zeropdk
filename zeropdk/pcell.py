@@ -391,12 +391,9 @@ class PCell:
         return objectview(cell_params)
 
     def new_cell(self, layout):
-        # A cell is only created once per instance.
-        if self._cell is not None:
-            return self._cell
+        new_cell = layout.create_cell(self.name)
 
-        self._cell = layout.create_cell(self.name)
-        return self.draw(self._cell)
+        return self.draw(new_cell)
 
     def place_cell(
         self, parent_cell, placement_origin, relative_to=None, transform_into=False
@@ -463,16 +460,21 @@ def GDSCell(cell_name, filename, gds_dir):
             self._cell_cache[(cell_name, filepath, layout)] = gdscell
             return gdscell
 
-        def draw(self, cell):
-            # Implement it like this:
-            # layout = cell.layout()
-            # gdscell = self.get_gds_cell(layout)
+        def draw_gds_cell(self, cell):
+            logger.warning('Using default draw_gds_cell method in %s.', self.name)
+            layout = cell.layout()
+            gdscell = self.get_gds_cell(layout)
 
-            # origin = kdb.DPoint(0, 0)
-            # angle = 0
-            # cell.insert_cell(gdscell, origin, angle)
-            # return cell, {}
-            raise NotImplementedError()
+            origin = kdb.DPoint(0, 0)
+            cell.insert_cell(gdscell, origin, 0)
+            return cell
+
+        def draw(self, cell):
+            # Providing default implementation here,
+            # But recommend you override it in child classes.
+            logger.warning('Using default draw method in %s.', self.name)
+            return self.draw_gds_cell(cell), {}
+            # raise NotImplementedError()
 
     return GDS_cell_base
 

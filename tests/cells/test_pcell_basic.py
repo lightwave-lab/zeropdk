@@ -34,7 +34,7 @@ def test_pcell_inheritance():
     assert "pad_array_count" in pad_array.params
 
     assert pad_array.params["pad_size"] is pad.params["pad_size"]
-    assert pad_array.params["pad_size"] is pad_array.cp.pad_size
+    assert pad_array.params["pad_size"] is pad_array.params.pad_size
 
 
 # Testing the most basic cells: GDSCell
@@ -63,8 +63,8 @@ def test_gdscell(top_cell):
     )
     TOP, layout = top_cell()
     ex = kdb.DPoint(1, 0)
-    plogo = princeton_logo.new_cell(layout)
-    size = (plogo.bbox().p2 - plogo.bbox().p1).norm()
+    plogo, _ = princeton_logo.new_cell(layout)
+    size = (plogo.dbbox().p2 - plogo.dbbox().p1).norm()
     for i in range(10):
         angle = 10 * i
         origin = ex * i * size
@@ -92,10 +92,9 @@ def test_gdscellcache(top_cell):
     ex = kdb.DPoint(1, 0)
 
     for i in range(10):
-        # The new_cell method does not create new cells,
-        # it returns the same previously instantiated cell
-        plogo = princeton_logo.new_cell(layout)
-        size = (plogo.bbox().p2 - plogo.bbox().p1).norm()
+        # The new_cell method will create a new cell every time it is called.
+        plogo, _ = princeton_logo.new_cell(layout)
+        size = (plogo.dbbox().p2 - plogo.dbbox().p1).norm()
         angle = 10 * i
         origin = ex * i * size
         TOP.insert_cell(plogo, origin, angle)
@@ -110,7 +109,7 @@ def test_gdscellcache(top_cell):
     for cell in layout.each_cell():
         if cell.name.startswith("xyz"):
             cell_count += 1
-    assert cell_count == 1
+    assert cell_count == 10
 
     # 10 instances of cell "xyz" exists
     inst_count = 0

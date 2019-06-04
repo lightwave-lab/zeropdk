@@ -18,8 +18,9 @@ def test_basic_usage():
     with pytest.raises(TypeError, match="Cannot set 'orange' to 'blah'"):
         pc.orange = "blah"
 
-    pc.add_param(PCellParameter(name="apple"))
-    pc.apple = 1  # WARNING  'apple' type is unknown. Setting to 'int'
+    with pytest.raises(RuntimeError, match="Unkown parameter type, cannot determine from default."):
+        pc.add_param(PCellParameter(name="apple"))
+    pc.add_param(PCellParameter(name="apple", type=int))
 
     with pytest.raises(TypeError, match="Cannot set 'apple' to 'one'"):
         pc.apple = "one"
