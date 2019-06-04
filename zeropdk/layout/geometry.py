@@ -118,6 +118,10 @@ def cluster_ports(ports_from, ports_to, ex):
             port_pair list an array of (p0, p1),
             and orientation is 0 for Z and 1 for S
     """
+    assert len(ports_from) == len(ports_to), "Ports must have the same length"
+    if len(ports_from) == 0:
+        return []
+
     orient_old = None
     port_cluster = []
     port_clusters = []

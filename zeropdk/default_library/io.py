@@ -115,7 +115,7 @@ class DCPad(OrientedCell):
 
         make_pad(origin + cp.pad_height * ey / 2, cp.pad_width, cp.pad_height, ex, ey)
 
-        port = Port("el0", origin + cp.port_width * ey / 2, -ey, "el_dc", cp.port_width)
+        port = Port("el0", origin + cp.port_width * ey / 2, -ey, cp.port_width, "el_dc")
 
         return cell, {"el0": port}
 
@@ -130,9 +130,9 @@ class DCPadArray(DCPad):
         ports = dict()
 
         for i in range(cp.pad_array_count):
-            dcpad = DCPad(name=f"pad_{i}", **cp)
+            dcpad = DCPad(name=f"pad_{i}", params=cp)
             dc_ports = dcpad.place_cell(cell, origin + cp.pad_array_pitch * i * ex)
             ports[f"el_{i}"] = dc_ports["el0"].rename(f"el_{i}")
             # self.add_port(dc_ports["el0"].rename(f"el_{i}"))
 
-        return cell,
+        return cell, ports
