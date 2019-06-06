@@ -245,6 +245,20 @@ class Port(object):
     def __repr__(self):
         return f"({self.name}, {self.position})"
 
+    def flip(self):
+
+        # TODO refactor after introducing port type
+        if self.name.startswith("el"):
+            pin_length = self.width
+            self.position += self.direction * pin_length
+        else:
+            # port is optical
+            pin_length = max(2, self.width / 10)
+
+        self.direction = -self.direction
+
+        return self
+
     def draw(self, cell, layer):
         """ Draws this port on cell's layer using klayout.db"""
         if self.name.startswith("el"):
@@ -264,6 +278,15 @@ class Port(object):
             self.width,
         )
         cell.shapes(layer).insert(port_path)
+
+        # Place a small arrow around the tip of the port
+        from zeropdk.layout.geometry import rotate90
+        ey = rotate90(ex)
+        port_tip = kdb.DSimplePolygon(
+            [self.position + 0.5 * pin_length * ex,
+             self.position + 0.4 * pin_length * ex + 0.1 * pin_length * ey,
+             self.position + 0.4 * pin_length * ex - 0.1 * pin_length * ey])
+        cell.shapes(layer).insert(port_tip)
         # pin_rectangle = rectangle(self.position, self.width,
         #                           pin_length, ex, ey)
         # cell.shapes(layer).insert(pin_rectangle)
