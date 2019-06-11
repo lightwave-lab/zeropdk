@@ -13,7 +13,7 @@ from itertools import repeat
 import numpy as np
 from numpy import cos, sin, pi, sqrt
 from functools import reduce
-from zeropdk.layout.geometry import curve_length
+from zeropdk.layout.geometry import curve_length, cross_prod
 
 import klayout.db as pya
 
@@ -199,7 +199,9 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
         if norm(curr_edge) >= dbu:
             prev_edge = point_list[-1] - point_list[-2]
 
-            if norm(prev_edge) * abs(sin_angle(curr_edge + prev_edge, prev_edge)) > dbu:
+            # Only add new point if the area of the triangle built with
+            # current edge and previous edge is greater than dbu^2/2
+            if abs(cross_prod(prev_edge, curr_edge)) > dbu ** 2 / 2:
                 if smooth:
                     # avoid corners when smoothing
                     if cos_angle(curr_edge, prev_edge) > cos(130 / 180 * pi):
