@@ -95,7 +95,7 @@ def patch_simple_polygon(backend):
             polygon_dpoints = list(self.each_point())
 
             def boundary_vertex(edge_from, edge_to):
-                # left edge:0, top edge:1 etc.
+                # left edge:0, top edge:1, right edge:2, bottom edge:3
                 # returns the vertex between two edges
                 assert abs(edge_from - edge_to) == 1
                 if edge_from % 2 == 0:
@@ -105,7 +105,7 @@ def patch_simple_polygon(backend):
                     vertical_edge = edge_to
                     horizontal_edge = edge_from
                 x = x_bounds[(vertical_edge // 2) % 2]
-                y = y_bounds[((horizontal_edge - 1) // 2) % 2]
+                y = y_bounds[(1 - (horizontal_edge - 1) // 2) % 2]
                 return backend.DPoint(x, y)
 
             # Rotate point list so we can start from a point inside
@@ -141,12 +141,12 @@ def patch_simple_polygon(backend):
                         # need to add the edge points
 
                         # this assumes a certain polygon orientation
-                        # assume points go counterlockwise, which means that
-                        # from edge 0 to 2, it goes through 3
+                        # assume points go clockwise, which means that
+                        # from edge 0 to 2, it goes through 1
                         i = previous_intersect
                         while i % 4 != last_intersect:
-                            polygon_dpoints_clipped.append(boundary_vertex(i, i - 1))
-                            i = i - 1
+                            polygon_dpoints_clipped.append(boundary_vertex(i, i + 1))
+                            i = i + 1
                 polygon_dpoints_clipped.extend(intersected_points)
                 if check_within_bounds(point):
                     polygon_dpoints_clipped.append(point)
