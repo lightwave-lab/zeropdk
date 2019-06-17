@@ -357,7 +357,26 @@ def layout_arc2(
 def layout_arc_with_drc_exclude(
     cell, layer, drc_layer, center, r, w, theta_start, theta_end, ex=None, **kwargs
 ):
-    """ Layout arc with drc exclude squares """
+    """ Layout arc with drc exclude squares on sharp corners"""
     dpoly = layout_arc(cell, layer, center, r, w, theta_start, theta_end, ex, **kwargs)
+    dpoly.layout_drc_exclude(cell, drc_layer, ex)
+    return dpoly
+
+
+def layout_arc2_with_drc_exclude(
+    cell, layer, drc_layer, center,
+    r1,
+    r2,
+    theta_start,
+    theta_end,
+    ex=None, **kwargs
+):
+    """ Layout arc2 with drc exclude squares on sharp corners"""
+    dpoly = layout_arc2(cell, layer, center,
+    r1,
+    r2,
+    theta_start,
+    theta_end,
+    ex, **kwargs)
     dpoly.layout_drc_exclude(cell, drc_layer, ex)
     return dpoly
