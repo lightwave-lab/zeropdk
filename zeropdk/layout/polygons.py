@@ -212,6 +212,43 @@ def layout_circle(cell, layer, center, r):
 layout_disk = layout_circle
 
 
+def layout_donut(
+    cell,
+    layer,
+    center,
+    r1,
+    r2,
+):
+    """ Layout donut shape.
+    cell: layout cell to place the layout
+    layer: which layer to use
+    center: origin DPoint (not affected by ex)
+    r1: internal radius
+    r2: external radius
+    """
+
+    assert r2 > r1
+
+    arc_function = lambda t: np.array(
+        [center.x + r2 * np.cos(t), center.y + r2 * np.sin(t)]
+    )
+    t, coords = sample_function(arc_function, [0, 2 * np.pi - 0.001], tol=0.002 / r2)
+
+    external_points = [pya.DPoint(x, y) for x, y in zip(*coords)]
+
+    arc_function = lambda t: np.array(
+        [center.x + r1 * np.cos(-t), center.y + r1 * np.sin(-t)]
+    )
+    t, coords = sample_function(arc_function, [0, 2 * np.pi - 0.001], tol=0.002 / r1)
+
+    internal_points = [pya.DPoint(x, y) for x, y in zip(*coords)]
+
+    dpoly = pya.DPolygon(external_points)
+    dpoly.insert_hole(internal_points)
+    insert_shape(cell, layer, dpoly)
+    return dpoly
+
+
 def layout_section(
     cell,
     layer,
@@ -300,13 +337,19 @@ def layout_arc(
     arc_function = lambda t: np.array([r * np.cos(t), r * np.sin(t)])
     t, coords = sample_function(arc_function, [theta_start, theta_end], tol=0.002 / r)
 
+    dt = 0.0001
     # # This yields a better polygon
+    insert_at = np.argmax(theta_start + dt < t)
+    t = np.insert(t, insert_at, theta_start + dt)
     coords = np.insert(
-        coords, 0, arc_function(theta_start - 0.001), axis=1
-    )  # start the waveguide a little bit before
-    coords = np.append(
-        coords, np.atleast_2d(arc_function(theta_end + 0.001)).T, axis=1
-    )  # finish the waveguide a little bit after
+        coords, insert_at, arc_function(theta_start + dt), axis=1
+    )  # start the second point a little bit after the first
+
+    insert_at = np.argmax(theta_end - dt < t)
+    t = np.insert(t, insert_at, theta_end - dt)
+    coords = np.insert(
+        coords, insert_at, arc_function(theta_end - dt), axis=1
+    )  # start the second to last point a little bit before the final
 
     # create original waveguide poligon prior to clipping and rotation
     dpoints_list = [pya.DPoint(x, y) for x, y in zip(*coords)]
