@@ -61,6 +61,14 @@ class PCellParameter:
         self.readonly: bool = readonly
         self.choices: List[Tuple[str, Any]] = choices
 
+    def __repr__(self):
+        return '<"{name}", type={type}, default={default}>'.format(
+            name=self.name, type=self.type.__qualname__, default=str(self.default)
+        )
+
+    def __str__(self):
+        return repr(self)
+
     def parse(self, value):
         """ Makes sure that the value is of a certain type"""
         if self.type is None:
@@ -281,11 +289,15 @@ class Port(object):
 
         # Place a small arrow around the tip of the port
         from zeropdk.layout.geometry import rotate90
+
         ey = rotate90(ex)
         port_tip = kdb.DSimplePolygon(
-            [self.position + 0.5 * pin_length * ex,
-             self.position + 0.4 * pin_length * ex + 0.1 * pin_length * ey,
-             self.position + 0.4 * pin_length * ex - 0.1 * pin_length * ey])
+            [
+                self.position + 0.5 * pin_length * ex,
+                self.position + 0.4 * pin_length * ex + 0.1 * pin_length * ey,
+                self.position + 0.4 * pin_length * ex - 0.1 * pin_length * ey,
+            ]
+        )
         cell.shapes(layer).insert(port_tip)
         # pin_rectangle = rectangle(self.position, self.width,
         #                           pin_length, ex, ey)
@@ -484,7 +496,7 @@ def GDSCell(cell_name, filename, gds_dir):
             return gdscell
 
         def draw_gds_cell(self, cell):
-            logger.warning('Using default draw_gds_cell method in %s.', self.name)
+            logger.warning("Using default draw_gds_cell method in %s.", self.name)
             layout = cell.layout()
             gdscell = self.get_gds_cell(layout)
 
@@ -495,7 +507,7 @@ def GDSCell(cell_name, filename, gds_dir):
         def draw(self, cell):
             # Providing default implementation here,
             # But recommend you override it in child classes.
-            logger.warning('Using default draw method in %s.', self.name)
+            logger.warning("Using default draw method in %s.", self.name)
             return self.draw_gds_cell(cell), {}
             # raise NotImplementedError()
 

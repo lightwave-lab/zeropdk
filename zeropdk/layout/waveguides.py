@@ -191,12 +191,12 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
             return point_list
         elif len(point_list) < 2:
             curr_edge = point - point_list[-1]
-            if norm(curr_edge) >= dbu:
+            if norm(curr_edge) > 0:
                 point_list.append(point)
                 return point_list
 
         curr_edge = point - point_list[-1]
-        if norm(curr_edge) >= dbu:
+        if norm(curr_edge) > 0:
             prev_edge = point_list[-1] - point_list[-2]
 
             # Only add new point if the area of the triangle built with
