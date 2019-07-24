@@ -1,4 +1,3 @@
-import random
 import pytest
 from ..context import zeropdk  # noqa
 from zeropdk.layout.polygons import rectangle

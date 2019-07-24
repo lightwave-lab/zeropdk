@@ -212,13 +212,7 @@ def layout_circle(cell, layer, center, r):
 layout_disk = layout_circle
 
 
-def layout_donut(
-    cell,
-    layer,
-    center,
-    r1,
-    r2,
-):
+def layout_donut(cell, layer, center, r1, r2):
     """ Layout donut shape.
     cell: layout cell to place the layout
     layer: which layer to use
@@ -407,19 +401,11 @@ def layout_arc_with_drc_exclude(
 
 
 def layout_arc2_with_drc_exclude(
-    cell, layer, drc_layer, center,
-    r1,
-    r2,
-    theta_start,
-    theta_end,
-    ex=None, **kwargs
+    cell, layer, drc_layer, center, r1, r2, theta_start, theta_end, ex=None, **kwargs
 ):
     """ Layout arc2 with drc exclude squares on sharp corners"""
-    dpoly = layout_arc2(cell, layer, center,
-    r1,
-    r2,
-    theta_start,
-    theta_end,
-    ex, **kwargs)
+    dpoly = layout_arc2(
+        cell, layer, center, r1, r2, theta_start, theta_end, ex, **kwargs
+    )
     dpoly.layout_drc_exclude(cell, drc_layer, ex)
     return dpoly

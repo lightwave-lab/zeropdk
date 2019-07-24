@@ -400,6 +400,8 @@ def layout_connect_ports(cell, layer, port_from, port_to, smooth=True):
 def layout_connect_ports_angle(cell, layer, port_from, port_to, angle):
     """ Places an "optimal" bezier curve from port_from to port_to, with a fixed orientation angle.
 
+    Args:
+        angle: degrees
     Use when connecting ports that are like horizontal-in and horizontal-out.
     """
 

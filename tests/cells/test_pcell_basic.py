@@ -28,7 +28,7 @@ class PadArray(Pad):
 
 
 def test_pcell_initializer():
-    pad = Pad(name="testname", params={'pad_size': 10})
+    pad = Pad(name="testname", params={"pad_size": 10})
     assert pad.params.pad_size == 10
 
 
