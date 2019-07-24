@@ -28,6 +28,7 @@ def main():
         version=release,
         description="PDK factory for klayout",
         long_description=readme,
+        long_description_content_type="text/markdown",
         license=license_text.split("\n")[0],
         python_requires=">=3.6",
         packages=find_packages(include=("zeropdk.*")),
