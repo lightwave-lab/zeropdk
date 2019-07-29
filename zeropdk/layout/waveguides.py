@@ -267,6 +267,24 @@ def layout_waveguide_angle(cell, layer, points_list, width, angle):
         width (microns): constant or list. If list, then it has to have the same length as points
         angle (degrees)
     """
+    return layout_waveguide_angle2(cell, layer, points_list, width, angle, angle)
+
+
+def layout_waveguide_angle2(cell, layer, points_list, width, angle_from, angle_to):
+    """ Lays out a waveguide (or trace) with a certain width along
+    given points and with fixed orientation at all points.
+
+    This is very useful for laying out Bezier curves with or without adiabatic tapers.
+
+    Args:
+        cell: cell to place into
+        layer: layer to place into. It is done with cell.shapes(layer).insert(pya.Polygon)
+        points_list: list of pya.DPoint (at least 2 points)
+        width (microns): constant or list. If list, then it has to have the same length as points
+        angle_from (degrees): normal angle of the first waveguide point
+        angle_to (degrees): normal angle of the last waveguide point
+
+    """
     if len(points_list) < 2:
         raise NotImplemented("ERROR: points_list too short")
         return
@@ -298,16 +316,19 @@ def layout_waveguide_angle(cell, layer, points_list, width, angle):
     finally:
         points_iterator = iter(points_list)
 
-    theta = angle * pi / 180
-
     points_low = list()
     points_high = list()
 
     point_width_list = list(zip(points_iterator, width_iterator))
     N = len(point_width_list)
 
+    angle_list = list(np.linspace(angle_from, angle_to, N))
+
     for i in range(0, N):
         point, width = point_width_list[i]
+        angle = angle_list[i]
+        theta = angle * pi / 180
+
         point_high = point + 0.5 * width * pya.DPoint(
             cos(theta + pi / 2), sin(theta + pi / 2)
         )
@@ -321,3 +342,4 @@ def layout_waveguide_angle(cell, layer, points_list, width, angle):
 
     poly = pya.DSimplePolygon(polygon_points)
     cell.shapes(layer).insert(poly)
+    return poly
