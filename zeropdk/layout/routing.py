@@ -6,7 +6,7 @@ from contextlib import contextmanager
 
 # from siepic_ebeam_pdk import EBEAM_TECH
 from zeropdk.layout.geometry import rotate90, manhattan_intersection, cluster_ports
-from zeropdk.layout.waveguides import layout_waveguide, layout_waveguide_angle
+from zeropdk.layout.waveguides import layout_waveguide, layout_waveguide_angle, layout_waveguide_angle2
 
 logger = logging.getLogger()
 
@@ -419,6 +419,31 @@ def layout_connect_ports_angle(cell, layer, port_from, port_to, angle):
 
     return layout_waveguide_angle(
         cell, layer, curve, [port_from.width, port_to.width], angle
+    )
+
+
+def layout_connect_ports_angle2(cell, layer, port_from, port_to, angle_from, angle_to):
+    """ Places an "optimal" bezier curve from port_from to port_to, with a fixed orientation angle.
+
+    Args:
+        angle: degrees
+    Use when connecting ports that are like horizontal-in and horizontal-out.
+    """
+
+    if port_from.name.startswith("el"):
+        assert port_to.name.startswith("el")
+        P0 = port_from.position + port_from.direction * port_from.width / 2
+        P3 = port_to.position + port_to.direction * port_to.width / 2
+
+        # straight lines for electrical connectors
+        curve = [P0, P3]
+    else:
+        P0 = port_from.position
+        P3 = port_to.position
+        curve = bezier_optimal(P0, P3, angle_from, angle_to)
+
+    return layout_waveguide_angle2(
+        cell, layer, curve, [port_from.width, port_to.width], angle_from, angle_to
     )
 
 
