@@ -41,7 +41,11 @@ class Tech:
                 if k["source"] != "*/*@*":
                     layer_map[k["name"]] = layerInfo
             else:
-                layer_map[k["name"]] = layerInfo
+                try:
+                    layer_map[k["name"]] = layerInfo
+                except TypeError as e:
+                    new_message = "Bad name for layer {}. Check your .lyp XML file for errors.".format(layerInfo)
+                    raise TypeError(new_message) from e
 
         # layer_map should contain values like '12/0'
         # 12 is the layer and 0 is the datatype
