@@ -15,7 +15,6 @@ def box(point1, point3, ex, ey):
 
     point2 = project(point3 - point1, ey, ex) * ey + point1
     point4 = point1 + point3 - point2
-
     return kdb.DSimplePolygon([point1, point2, point3, point4])
 
 
@@ -358,6 +357,25 @@ def layout_arc(
     dpolygon.compress(True)
     dpolygon.layout(cell, layer)
     return dpolygon
+
+def layout_arc_degree(
+    cell,
+    layer,
+    center,
+    r,
+    w,
+    theta_start,
+    theta_end,
+    ex=None,
+    x_bounds=(-np.inf, np.inf),
+    y_bounds=(-np.inf, np.inf),
+):
+    """ same as layout_arc, but with theta in degrees instead of radians
+    """
+
+    theta_start *= np.pi / 180
+    theta_end *= np.pi / 180
+    return layout_arc(cell, layer, center, r, w, theta_start, theta_end, ex=ex, x_bounds=x_bounds, y_bounds=y_bounds)
 
 
 def layout_arc2(
