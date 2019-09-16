@@ -9,7 +9,7 @@ debug = False
 cache_dir = os.path.join(os.getcwd(), "cache")
 
 
-def produce_hash(self):
+def produce_hash(self, extra=None):
     from zeropdk.pcell import PCell
 
     # copy source code of class and all its ancestors
@@ -24,7 +24,7 @@ def produce_hash(self):
     diff_params = dict(self.params)
 
     long_hash_pcell = sha256(
-        (source_code + str(diff_params) + self.name).encode()
+        (source_code + str(diff_params) + self.name + str(extra)).encode()
     ).hexdigest()
     short_hash_pcell = long_hash_pcell[0:7]
     return short_hash_pcell
@@ -46,7 +46,6 @@ def read_layout(layout, gds_filename):
     cell_indices = {cell.name: cell.cell_index() for cell in cell_list}
     for i in cell_indices.values():
         layout.rename_cell(i, "")
-
     lmap = layout.read(gds_filename, load_options)
     # in the new layout, get all cells names
     cell_names2 = [(cell.cell_index(), cell.name) for cell in layout.each_cell()]
@@ -77,7 +76,6 @@ def read_layout(layout, gds_filename):
 
     layer_map_dict[layout] = lmap
     return lmap
-
 
 def cache_cell(cls, cache_dir=cache_dir):
     """ Caches results of pcell call to save build time.
@@ -120,7 +118,8 @@ def cache_cell(cls, cache_dir=cache_dir):
                 except KeyError:
                     layer_map_dict[layout] = pya.LayerMap()
 
-                short_hash_pcell = produce_hash(self)
+                # Adding the dbu of the layout in the hash (bit us in the butt last time)
+                short_hash_pcell = produce_hash(self, extra=(layout.dbu,))
 
                 # cache paths
                 cache_fname = f"cache_{self.__class__.__qualname__}_{short_hash_pcell}"
@@ -157,6 +156,7 @@ def cache_cell(cls, cache_dir=cache_dir):
 
                     # populating .gds and .pkl
                     empty_layout = pya.Layout()
+                    empty_layout.dbu = layout.dbu
                     empty_cell = empty_layout.create_cell(cell.name)
                     filled_cell, ports = draw(self, empty_cell)
 
