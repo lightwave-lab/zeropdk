@@ -4,6 +4,10 @@ from klayout.db import Layout
 def layout_read_cell(layout, cell_name, filepath):
     """ Imports a cell from a file into current layout.
 
+    layout [pya.Layout]: layout to insert cell into
+    cell_name [str]: cell name from the file in filepath
+    filepath [str]: location of layout file you want to import
+
     If the name already exists in the current layout, klayout will
     create a new one based on its internal rules for naming
     collision: name$1, name$2, ...
