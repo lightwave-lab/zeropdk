@@ -24,67 +24,39 @@ def suppress_stdout():
 
 WAVEGUIDE_RADIUS = 10
 WAVEGUIDE_WIDTH = 0.5
+TAPER_WIDTH = 3
+TAPER_LENGTH = 20
 
 
-def layout_ebeam_waveguide_from_points(cell, points_list, radius=None, width=None):
-    """ Takes a list of points and calls SiEPIC Waveguide Pcell
-        The points_list should be a rough shape of the waveguide.
-        The points_list must be a manhattan path!
-        This function will create a smooth waveguide by rounding the trace
-        at every corner with a particular radius.
-
-        For example, if points_list has three points forming a square of size
-        R, then the output will be a 90-degree arc of radius R.
+# The function below is an reference. You need to provide an EBEAM_TECH
+# or replace the layer in the call to layout_waveguide_from_points
+def layout_ebeam_waveguide_from_points(
+    cell, points_list, radius=None, width=None, taper_width=None, taper_length=None
+):
+    """ Takes a list of points and lays out a rounded waveguide with optional tapers
     """
-    from math import floor
 
     TECHNOLOGY = EBEAM_TECH
     if radius is None:
         radius = WAVEGUIDE_RADIUS
     if width is None:
         width = WAVEGUIDE_WIDTH
-    for point in points_list:
-        point.x = floor(point.x * 1000) / 1000
-        point.y = floor(point.y * 1000) / 1000
+    if taper_width is None:
+        taper_width = TAPER_WIDTH
+    if taper_length is None:
+        taper_length = TAPER_LENGTH
 
-    for i in range(0, len(points_list) - 1):
-        """
-        Calculate the x distance and the y distance to the next point.
-        Get the max of the above two numbers
-        Set the other number to zero
-        """
-        posx = abs(points_list[i + 1].x - points_list[i].x)
-        posy = abs(points_list[i + 1].y - points_list[i].y)
-        if (
-            abs(points_list[i + 1].x - points_list[i].x) > 0
-            and abs(points_list[i + 1].y - points_list[i].y) > 0
-        ):
-            if posx < posy:
-                points_list[i + 1].x = points_list[i].x
-            else:
-                points_list[i + 1].y = points_list[i].y
+    from .waveguide_rounding import layout_waveguide_from_points
 
-    wg_dpath = pya.DPath(points_list, 0.5)
-    layout = cell.layout()
-    with suppress_stdout():
-        wg_cell = layout.create_cell(
-            "Waveguide",
-            TECHNOLOGY["technology_name"],
-            {
-                "path": wg_dpath,
-                "radius": radius,
-                "width": width,
-                "layers": ["Si"],
-                "widths": [width],
-                "offsets": [0],
-            },
-        )
-
-    layerSi = layout.layer(TECHNOLOGY["Si"])
-    # let's just get the shapes
-    cell.shapes(layerSi).insert(wg_cell.shapes(layerSi))
-
-    layout.delete_cell(wg_cell.cell_index())
+    layout_waveguide_from_points(
+        cell,
+        TECHNOLOGY.layers["Si"],
+        points_list,
+        width,
+        radius,
+        taper_width,
+        taper_length,
+    )
 
     return cell
 
@@ -445,91 +417,6 @@ def layout_connect_ports_angle2(cell, layer, port_from, port_to, angle_from, ang
     return layout_waveguide_angle2(
         cell, layer, curve, [port_from.width, port_to.width], angle_from, angle_to
     )
-
-
-# @cache_cell
-# class ViaMLM1(IMECell):
-
-#     def initialize_default_params(self):
-#         TECHNOLOGY = self.TECHNOLOGY
-#         self.define_param("angle_ex", self.TypeDouble,
-#                           "x-axis angle (deg)", default=0)
-#         self.define_param("ml_width", self.TypeDouble,
-#                           "Metal Width (um)", default=7)
-#         self.define_param("ML", self.TypeLayer, "ML Layer",
-#                           default=TECHNOLOGY['ML'])
-#         self.define_param("M1", self.TypeLayer, "M1 Layer",
-#                           default=TECHNOLOGY['M1'])
-#         self.define_param("VL", self.TypeLayer, "VL Layer",
-#                           default=TECHNOLOGY['VL'])
-
-#     def pcell(self, layout, cell=None, params=None):
-#         if cell is None:
-#             cell = layout.create_cell(self.name)
-
-#         cp = self.parse_param_args(params)
-
-#         origin = pya.DPoint(0, 0)
-
-#         ex = rotate(EX, cp.angle_ex * pi / 180)
-
-#         layerM1 = layout.layer(cp.M1)
-#         layerVL = layout.layer(cp.VL)
-#         layerML = layout.layer(cp.ML)
-
-#         ml_width = cp.ml_width
-#         via_width = ml_width - 4  # min inclusion 1.5
-#         m1_width = via_width + 4  # min inclusion 1.5
-
-#         layout_square(cell, layerVL, origin, via_width, ex)
-#         layout_square(cell, layerML, origin, ml_width, ex)
-#         layout_square(cell, layerM1, origin, m1_width, ex)
-
-#         return cell, dict()
-
-
-# def layout_ime_manhattan_traces(cell, path, ex, initiate_with_via=False):
-#     """ Lays out a manhattan trace with vias
-
-#         Args:
-#             path: list of tuples containing necessary info ((x, y) or pya.DPoint, layer, width)
-#     """
-#     TECHNOLOGY = get_technology_by_name('SiEPIC_IME')
-#     layer1 = TECHNOLOGY['M1']
-#     layer2 = TECHNOLOGY['ML']
-#     layervia = TECHNOLOGY['VL']
-
-#     def ime_via_cell_placer(cell, origin, width, layer1, layer2, layervia, ex):
-#         angle_ex = np.arctan2(ex.y, ex.x) * 180 / pi
-#         return ViaMLM1("_via"
-#                        ).place_cell(cell, origin,
-#                                     params={"M1": layer1,
-#                                             "ML": layer2,
-#                                             "VL": layervia,
-#                                             "angle_ex": angle_ex,
-#                                             "ml_width": width})
-#     return layout_manhattan_traces(cell, layer1, layer2, layervia,
-#                                    ime_via_cell_placer, path, ex,
-#                                    initiate_with_via=initiate_with_via)
-
-
-# def layout_ime_manhattan_traces_from_clusters(cell, layer,
-# ports_clusters, ex, initiate_with_via=False, terminate_with_via=False,
-# middle_taper=False, pitch=None):
-
-#     paths = compute_paths_from_clusters(
-#         ports_clusters, layer, ex, pitch=pitch, middle_taper=middle_taper)
-
-#     for path in paths:
-#         layout_ime_manhattan_traces(cell, path, ex, initiate_with_via=initiate_with_via)
-#         if terminate_with_via:
-#             P3 = path[-1][0]
-#             width = path[-1][2]
-#             angle_ex = np.arctan2(ex.y, ex.x) * 180 / pi
-#             ViaMLM1("_via"
-#                     ).place_cell(cell, P3,
-#                                  params={"angle_ex": angle_ex,
-#                                          "ml_width": width})
 
 
 def append_L_trace(path, new_point, middle_layer, ex):

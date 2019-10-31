@@ -273,7 +273,7 @@ class Port(object):
             pin_length = self.width
         else:
             # port is optical
-            pin_length = max(2, self.width / 10)
+            pin_length = min(2, self.width / 10)
 
         ex = self.direction
 
@@ -308,7 +308,7 @@ class Port(object):
             kdb.DText(
                 self.name,
                 kdb.DTrans(kdb.DTrans.R0, self.position.x, self.position.y),
-                min(pin_length, 20),
+                min(pin_length, 2),
                 0,
             )
         )
