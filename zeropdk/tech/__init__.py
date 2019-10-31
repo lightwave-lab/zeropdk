@@ -21,7 +21,9 @@ class Tech:
 
     @classmethod
     def load_from_xml(cls, lyp_filename):
-        with open(lyp_filename, "r") as file:
+        import os
+        lyp_filepath = os.path.realpath(lyp_filename)
+        with open(lyp_filepath, "r") as file:
             layer_dict = xml_to_dict(file.read())["layer-properties"]["properties"]
 
         layer_map = {}

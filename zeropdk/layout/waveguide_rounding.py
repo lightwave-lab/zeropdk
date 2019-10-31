@@ -593,7 +593,7 @@ def main():
 
     radius = 3
     for ex2 in (ex, -ex):
-        points = [10 * ex2]
+        points = [2 * ex2]
         for d in np.arange(1, 10, 2.5):
             origin = points[-1]
             displacements = [
@@ -603,7 +603,7 @@ def main():
                 (d + 2 * radius) * ey,
             ]
             points += [origin + displacement for displacement in displacements]
-        origin = 60 * ey
+        origin = 15 * ex + 40 * ey
         points = [origin + point for point in points]
         x = compute_rounded_path(points, radius)
         trace_rounded_path(TOP, layer, x, 0.5)
@@ -620,17 +620,18 @@ def main():
     ]
 
     # Untapered
-    origin = 100 * ex
+    origin = 40 * ex
     points_ = [origin + point for point in points]
     layout_waveguide_from_points(TOP, layer, points_, 0.5, 5)
 
     # Tapered
-    origin = 100 * ex + 40 * ey
+    origin = 40 * ex + 40 * ey
     points_ = [origin + point for point in points]
     layout_waveguide_from_points(
         TOP, layer, points_, 0.5, 5, taper_width=3, taper_length=10
     )
 
+    print("Wrote waveguide_rounding.gds")
     TOP.write("waveguide_rounding.gds")
 
 
