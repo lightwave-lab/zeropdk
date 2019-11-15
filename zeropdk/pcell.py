@@ -136,7 +136,10 @@ class objectview(MutableMapping):
     def __add__(self, other):
         new_dict = copy(self.orig_d)
         new_dict.update(other)
-        return new_dict
+        return objectview(new_dict)
+
+    def __radd__(self, other):
+        return self.__add__(other)
 
     def __repr__(self):
         return "objectview({})".format(repr(self.orig_d))
@@ -259,12 +262,16 @@ class Port(object):
         if self.name.startswith("el"):
             pin_length = self.width
             self.position += self.direction * pin_length
-        else:
-            # port is optical
-            pin_length = max(2, self.width / 10)
 
         self.direction = -self.direction
 
+        return self
+
+    def rotate(self, angle_deg):
+        from zeropdk.layout.geometry import rotate
+        from math import pi
+
+        self.direction = rotate(self.direction, angle_deg * pi / 180)
         return self
 
     def draw(self, cell, layer):

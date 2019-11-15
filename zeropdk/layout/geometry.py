@@ -107,8 +107,9 @@ def cluster_ports(ports_from, ports_to, ex):
     can be routed independently with an array of Z or S traces that don't
     touch each other.
 
-    Args: ex (Vector/Point): orientation of the axis along with the ports
-    are placed.
+    Args:
+        - ex (Vector/Point): orientation of the axis along with the
+    ports are placed.
 
     TODO document more.
 
@@ -118,7 +119,7 @@ def cluster_ports(ports_from, ports_to, ex):
             port_pair list an array of (p0, p1),
             and orientation is 0 for Z and 1 for S
     """
-    assert len(ports_from) == len(ports_to), "Ports must have the same length"
+    assert len(ports_from) == len(ports_to), "Port array must have the same length"
     if len(ports_from) == 0:
         return []
 
@@ -135,7 +136,7 @@ def cluster_ports(ports_from, ports_to, ex):
         # first pair
         if orient_old is None:
             port_cluster.append((port_from, port_to))
-        # the rest pairs
+        # the rest of the pairs
         elif orient_new == orient_old:
             # if the ports are too spaced apart, initiate new cluster
             right_port = min(port_from, port_to, key=proj_ex)

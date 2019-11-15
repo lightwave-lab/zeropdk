@@ -6,6 +6,7 @@ import pickle
 
 layer_map_dict = dict()
 debug = False
+CACHE_ACTIVATED = True
 cache_dir = os.path.join(os.getcwd(), "cache")
 
 
@@ -77,7 +78,11 @@ def read_layout(layout, gds_filename):
     layer_map_dict[layout] = lmap
     return lmap
 
-def cache_cell(cls, cache_dir=cache_dir):
+
+from functools import partial
+
+
+def cache_cell(cls=None, *, extra_hash=None, cache_dir=cache_dir):
     """ Caches results of pcell call to save build time.
 
     First, it computes a hash based on:
@@ -106,91 +111,97 @@ def cache_cell(cls, cache_dir=cache_dir):
             pass
     """
 
-    activated = True
-    if activated:
-        # decorate draw
-        def cache_decorator(draw):
-            def wrapper_draw(self, cell):
-                global layer_map_dict
-                layout = cell.layout()
-                try:
-                    layer_map_dict[layout]
-                except KeyError:
-                    layer_map_dict[layout] = pya.LayerMap()
+    if cls is None:
+        # tip taken from https://pybit.es/decorator-optional-argument.html
+        return partial(cache_cell, extra_hash=extra_hash, cache_dir=cache_dir)
 
-                # Adding the dbu of the layout in the hash (bit us in the butt last time)
-                short_hash_pcell = produce_hash(self, extra=(layout.dbu,))
+    if not CACHE_ACTIVATED:
+        return cls
 
-                # cache paths
-                cache_fname = f"cache_{self.__class__.__qualname__}_{short_hash_pcell}"
-                cache_fname_gds = cache_fname + ".gds"
-                cache_fname_pkl = cache_fname + ".klayout.pkl"
+    # decorate draw
+    def cache_decorator(draw):
+        def wrapper_draw(self, cell):
+            global layer_map_dict
+            layout = cell.layout()
+            try:
+                layer_map_dict[layout]
+            except KeyError:
+                layer_map_dict[layout] = pya.LayerMap()
 
-                os.makedirs(cache_dir, mode=0o775, exist_ok=True)
+            # Adding the dbu of the layout in the hash (bit us in the butt last time)
+            short_hash_pcell = produce_hash(self, extra=(layout.dbu, extra_hash))
 
-                cache_fpath_gds = os.path.join(cache_dir, cache_fname_gds)
-                cache_fpath_pkl = os.path.join(cache_dir, cache_fname_pkl)
+            # cache paths
+            cache_fname = f"cache_{self.__class__.__qualname__}_{short_hash_pcell}"
+            cache_fname_gds = cache_fname + ".gds"
+            cache_fname_pkl = cache_fname + ".klayout.pkl"
 
-                if os.path.isfile(cache_fpath_gds) and os.path.isfile(cache_fpath_pkl):
-                    with open(cache_fpath_pkl, "rb") as file:
-                        ports, read_short_hash_pcell, cellname = pickle.load(file)
-                    if debug:
-                        print(f"Reading from cache: {cache_fname}: {cellname}, {ports}")
-                    else:
-                        print("r", end="", flush=True)
-                    if not layout.has_cell(cache_fname):
-                        read_layout(layout, cache_fpath_gds)
-                    retrieved_cell = layout.cell(cache_fname)
-                    cell.insert(
-                        pya.DCellInstArray(
-                            retrieved_cell.cell_index(),
-                            pya.DTrans(pya.DTrans.R0, pya.DPoint(0, 0)),
-                        )
-                    )
-                    # cell.move_tree(retrieved_cell)
+            os.makedirs(cache_dir, mode=0o775, exist_ok=True)
+
+            cache_fpath_gds = os.path.join(cache_dir, cache_fname_gds)
+            cache_fpath_pkl = os.path.join(cache_dir, cache_fname_pkl)
+
+            if os.path.isfile(cache_fpath_gds) and os.path.isfile(cache_fpath_pkl):
+                with open(cache_fpath_pkl, "rb") as file:
+                    ports, read_short_hash_pcell, cellname = pickle.load(file)
+                if debug:
+                    print(f"Reading from cache: {cache_fname}: {cellname}, {ports}")
                 else:
-                    if layout.has_cell(cache_fname):
-                        print(
-                            f"WARNING: {cache_fname_gds} does not exist but {cache_fname} is in layout."
-                        )
-
-                    # populating .gds and .pkl
-                    empty_layout = pya.Layout()
-                    empty_layout.dbu = layout.dbu
-                    empty_cell = empty_layout.create_cell(cell.name)
-                    filled_cell, ports = draw(self, empty_cell)
-
-                    if debug:
-                        print(
-                            f"Writing to cache: {cache_fname}: {filled_cell.name}, {ports}"
-                        )
-                    else:
-                        print("w", end="", flush=True)
-
-                    cellname, filled_cell.name = filled_cell.name, cache_fname
-                    filled_cell.write(cache_fpath_gds)
-                    with open(cache_fpath_pkl, "wb") as file:
-                        pickle.dump((ports, short_hash_pcell, cellname), file)
-
-                    # Make sure we delete the empty_layout to not grow
-                    # helps debug
-                    layer_map_dict.pop(empty_layout, None)
-                    del empty_layout
-                    assert not layout.has_cell(cache_fname)
-
+                    print("r", end="", flush=True)
+                if not layout.has_cell(cache_fname):
                     read_layout(layout, cache_fpath_gds)
-                    retrieved_cell = layout.cell(cache_fname)
-                    cell.insert(
-                        pya.DCellInstArray(
-                            retrieved_cell.cell_index(),
-                            pya.DTrans(pya.DTrans.R0, pya.DPoint(0, 0)),
-                        )
+                retrieved_cell = layout.cell(cache_fname)
+                cell.insert(
+                    pya.DCellInstArray(
+                        retrieved_cell.cell_index(),
+                        pya.DTrans(pya.DTrans.R0, pya.DPoint(0, 0)),
+                    )
+                )
+                # cell.move_tree(retrieved_cell)
+            else:
+                if layout.has_cell(cache_fname):
+                    print(
+                        f"WARNING: {cache_fname_gds} does not exist but {cache_fname} is in layout."
                     )
 
-                return cell, ports
+                # populating .gds and .pkl
+                empty_layout = pya.Layout()
+                empty_layout.dbu = layout.dbu
+                empty_cell = empty_layout.create_cell(cell.name)
+                filled_cell, ports = draw(self, empty_cell)
 
-            return wrapper_draw
+                if debug:
+                    print(
+                        f"Writing to cache: {cache_fname}: {filled_cell.name}, {ports}"
+                    )
+                else:
+                    print("w", end="", flush=True)
 
-        if hasattr(cls, "draw") and cls.draw.__name__ != "wrapper_draw":
-            setattr(cls, "draw", cache_decorator(cls.draw))
+                cellname, filled_cell.name = filled_cell.name, cache_fname
+                filled_cell.write(cache_fpath_gds)
+                with open(cache_fpath_pkl, "wb") as file:
+                    pickle.dump((ports, short_hash_pcell, cellname), file)
+
+                # Make sure we delete the empty_layout to not grow
+                # helps debug
+                layer_map_dict.pop(empty_layout, None)
+                del empty_layout
+                assert not layout.has_cell(cache_fname)
+
+                read_layout(layout, cache_fpath_gds)
+                retrieved_cell = layout.cell(cache_fname)
+                cell.insert(
+                    pya.DCellInstArray(
+                        retrieved_cell.cell_index(),
+                        pya.DTrans(pya.DTrans.R0, pya.DPoint(0, 0)),
+                    )
+                )
+
+            return cell, ports
+
+        return wrapper_draw
+
+    if hasattr(cls, "draw") and cls.draw.__name__ != "wrapper_draw":
+        setattr(cls, "draw", cache_decorator(cls.draw))
+
     return cls

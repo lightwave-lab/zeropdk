@@ -213,7 +213,7 @@ def compute_paths_from_clusters(
 
         assert not (
             is_to_bottom and is_to_top
-        )  # there must be a line dividing the top and bottom port rows
+        ), "there must be a line dividing the top and bottom port rows"
 
         if is_to_top:
             offset_port_from = max(
