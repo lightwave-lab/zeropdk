@@ -497,7 +497,7 @@ def layout_waveguide_from_points(
     cell, layer, points, width, radius, taper_width=None, taper_length=None
 ):
 
-    assert radius > width, "Please use a radius larger than the pitch"
+    assert radius > width / 2, "Please use a radius larger than the half-width"
     points = unique_points(points)
 
     if len(points) < 2:

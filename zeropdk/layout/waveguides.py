@@ -13,7 +13,7 @@ from itertools import repeat
 import numpy as np
 from numpy import cos, sin, pi, sqrt
 from functools import reduce
-from zeropdk.layout.geometry import curve_length, cross_prod
+from zeropdk.layout.geometry import curve_length, cross_prod, find_arc
 
 import klayout.db as pya
 
@@ -43,6 +43,7 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
     def norm(self):
         return sqrt(self.x ** 2 + self.y ** 2)
 
+    # Prepares a joint point and width iterators
     try:
         if len(width) == len(points_list):
             width_iterator = iter(width)
@@ -103,71 +104,93 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
         prev_point, prev_width = point_width_list[i - 1]
         point, width = point_width_list[i]
         next_point, next_width = point_width_list[i + 1]
-
         delta_prev = point - prev_point
         delta_next = next_point - point
-        theta_prev = np.arctan2(delta_prev.y, delta_prev.x)
-        theta_next = np.arctan2(delta_next.y, delta_next.x)
 
-        next_point_high = next_point + 0.5 * next_width * pya.DPoint(
-            cos(theta_next + pi / 2), sin(theta_next + pi / 2)
-        )
-        next_point_low = next_point + 0.5 * next_width * pya.DPoint(
-            cos(theta_next - pi / 2), sin(theta_next - pi / 2)
-        )
+        # based on these points, there are two algorithms available:
+        # 1. arc algorithm. it detects you are trying to draw an arc
+        # so it will compute the center and radius of that arc and
+        # layout accordingly.
+        # 2. linear trace algorithm. it is not an arc, and you want
+        # straight lines with sharp corners.
 
-        forward_point_high = point + 0.5 * width * pya.DPoint(
-            cos(theta_next + pi / 2), sin(theta_next + pi / 2)
-        )
-        forward_point_low = point + 0.5 * width * pya.DPoint(
-            cos(theta_next - pi / 2), sin(theta_next - pi / 2)
-        )
+        # to detect an arc, the points need to go in the same direction
+        # and the width has to be bigger than the smallest distance between
+        # two points.
 
-        prev_point_high = prev_point + 0.5 * prev_width * pya.DPoint(
-            cos(theta_prev + pi / 2), sin(theta_prev + pi / 2)
-        )
-        prev_point_low = prev_point + 0.5 * prev_width * pya.DPoint(
-            cos(theta_prev - pi / 2), sin(theta_prev - pi / 2)
-        )
+        is_arc = delta_next * delta_prev > 0
+        is_arc = is_arc and (min(delta_next.norm(), delta_prev.norm()) < width)
+        center_arc, radius = find_arc(prev_point, point, next_point)
+        if is_arc and radius < np.inf:  # algorithm 1
+            ray = point - center_arc
+            ray /= ray.norm()
+            # if orientation is positive, the arc is going counterclockwise
+            orientation = ray * delta_prev > 0
+            points_low.append(point + orientation * width * ray / 2)
+            points_high.append(point - orientation * width * ray / 2)
+        else:  # algorithm 2
+            theta_prev = np.arctan2(delta_prev.y, delta_prev.x)
+            theta_next = np.arctan2(delta_next.y, delta_next.x)
 
-        backward_point_high = point + 0.5 * width * pya.DPoint(
-            cos(theta_prev + pi / 2), sin(theta_prev + pi / 2)
-        )
-        backward_point_low = point + 0.5 * width * pya.DPoint(
-            cos(theta_prev - pi / 2), sin(theta_prev - pi / 2)
-        )
+            next_point_high = next_point + 0.5 * next_width * pya.DPoint(
+                cos(theta_next + pi / 2), sin(theta_next + pi / 2)
+            )
+            next_point_low = next_point + 0.5 * next_width * pya.DPoint(
+                cos(theta_next - pi / 2), sin(theta_next - pi / 2)
+            )
 
-        fix_angle = lambda theta: ((theta + pi) % (2 * pi)) - pi
+            forward_point_high = point + 0.5 * width * pya.DPoint(
+                cos(theta_next + pi / 2), sin(theta_next + pi / 2)
+            )
+            forward_point_low = point + 0.5 * width * pya.DPoint(
+                cos(theta_next - pi / 2), sin(theta_next - pi / 2)
+            )
 
-        # High point decision
-        next_high_edge = pya.DEdge(forward_point_high, next_point_high)
-        prev_high_edge = pya.DEdge(backward_point_high, prev_point_high)
+            prev_point_high = prev_point + 0.5 * prev_width * pya.DPoint(
+                cos(theta_prev + pi / 2), sin(theta_prev + pi / 2)
+            )
+            prev_point_low = prev_point + 0.5 * prev_width * pya.DPoint(
+                cos(theta_prev - pi / 2), sin(theta_prev - pi / 2)
+            )
 
-        if next_high_edge.crossed_by(prev_high_edge):
-            intersect_point = next_high_edge.crossing_point(prev_high_edge)
-            points_high.append(intersect_point)
-        else:
-            cos_dd = cos_angle(delta_next, delta_prev)
-            if width * (1 - cos_dd) > dbu and fix_angle(theta_next - theta_prev) < 0:
-                points_high.append(backward_point_high)
-                points_high.append(forward_point_high)
+            backward_point_high = point + 0.5 * width * pya.DPoint(
+                cos(theta_prev + pi / 2), sin(theta_prev + pi / 2)
+            )
+            backward_point_low = point + 0.5 * width * pya.DPoint(
+                cos(theta_prev - pi / 2), sin(theta_prev - pi / 2)
+            )
+
+            fix_angle = lambda theta: ((theta + pi) % (2 * pi)) - pi
+
+            # High point decision
+            next_high_edge = pya.DEdge(forward_point_high, next_point_high)
+            prev_high_edge = pya.DEdge(backward_point_high, prev_point_high)
+
+            if next_high_edge.crossed_by(prev_high_edge):
+                intersect_point = next_high_edge.crossing_point(prev_high_edge)
+                points_high.append(intersect_point)
             else:
-                points_high.append((backward_point_high + forward_point_high) * 0.5)
+                cos_dd = cos_angle(delta_next, delta_prev)
+                if width * (1 - cos_dd) > dbu and fix_angle(theta_next - theta_prev) < 0:
+                    points_high.append(backward_point_high)
+                    points_high.append(forward_point_high)
+                else:
+                    points_high.append((backward_point_high + forward_point_high) * 0.5)
 
-        # Low point decision
-        next_low_edge = pya.DEdge(forward_point_low, next_point_low)
-        prev_low_edge = pya.DEdge(backward_point_low, prev_point_low)
+            # Low point decision
+            next_low_edge = pya.DEdge(forward_point_low, next_point_low)
+            prev_low_edge = pya.DEdge(backward_point_low, prev_point_low)
 
-        if next_low_edge.crossed_by(prev_low_edge):
-            intersect_point = next_low_edge.crossing_point(prev_low_edge)
-            points_low.append(intersect_point)
-        else:
-            cos_dd = cos_angle(delta_next, delta_prev)
-            if width * (1 - cos_dd) > dbu and fix_angle(theta_next - theta_prev) > 0:
-                points_low.append(backward_point_low)
-                points_low.append(forward_point_low)
+            if next_low_edge.crossed_by(prev_low_edge):
+                intersect_point = next_low_edge.crossing_point(prev_low_edge)
+                points_low.append(intersect_point)
             else:
-                points_low.append((backward_point_low + forward_point_low) * 0.5)
+                cos_dd = cos_angle(delta_next, delta_prev)
+                if width * (1 - cos_dd) > dbu and fix_angle(theta_next - theta_prev) > 0:
+                    points_low.append(backward_point_low)
+                    points_low.append(forward_point_low)
+                else:
+                    points_low.append((backward_point_low + forward_point_low) * 0.5)
 
     last_point, last_width = point_width_list[-1]
     point, width = point_width_list[-2]
@@ -184,7 +207,11 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
     if (final_low_point - points_low[-1]) * delta > 0:
         points_low.append(final_low_point)
 
+    # Append point only if the area of the triangle built with
+    # neighboring edges is above a certain threshold.
+    # In addition, if smooth is true:
     # Append point only if change in direction is less than 130 degrees.
+
     def smooth_append(point_list, point):
         if len(point_list) < 1:
             point_list.append(point)

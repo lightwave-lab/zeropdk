@@ -19,6 +19,40 @@ def cross_prod(p1, p2):
     return p1.x * p2.y - p1.y * p2.x
 
 
+def find_arc(A, B, C):
+    """ Finds the arc of a circle containing points A, B, C.
+        Returns the center of the circle, and the radius:
+            (O[Point], R)
+        If A,B,C falls on a line, the center is None and the radius is infinite.
+    """
+
+    # check if it is not a valid triangle
+    AB = B - A
+    BC = C - B
+    area = cross_prod(AB, BC)
+
+    if np.isclose(area, 0):
+        return None, np.inf
+
+    ex = AB / AB.norm()
+    ey = rotate90(ex)
+
+    D = (A + B) / 2
+    E = (B + C) / 2
+
+    LHS_sys = np.array([[BC * ex, BC * ey],
+                       [AB * ex, AB * ey]])
+    RHS_sys = np.array([[E * BC],
+                        [D * AB]])
+
+    sol = np.linalg.inv(LHS_sys).dot(RHS_sys)
+    h, k = sol.flatten()
+
+    O = h * ex + k * ey
+    R = (A - O).norm()
+    return O, R
+
+
 def project(v, ex, ey=None):
     """ Compute a such that v = a * ex + b * ey """
     if ey is None:
