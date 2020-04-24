@@ -6,7 +6,7 @@ computed across a wide variety of angles.
 This generates the bezier_optimal.npz file
 """
 
-from zeropdk.layout.geometry import _bezier_optimal
+from zeropdk.layout.geometry import _original_bezier_optimal as _bezier_optimal
 
 from scipy.interpolate import interp2d
 import numpy as np
@@ -14,8 +14,8 @@ import os
 
 
 def generate_npz():
-
-    x = y = np.linspace(-170, 170, 351) * np.pi / 180
+    print("Generating npz... ", end="", flush=True)
+    x = y = np.linspace(-170, 170, 69) * np.pi / 180
 
     xx, yy = np.meshgrid(x, y)
     z_a, z_b = np.frompyfunc(_bezier_optimal, 2, 2)(xx, yy)
@@ -25,9 +25,11 @@ def generate_npz():
     # need to store x, y, z_a and z_b
     # recall with interpolate(angles_0, angles_3, z_a, kind='cubic')
     np.savez("bezier_optimal.npz", x=x, y=y, z_a=z_a, z_b=z_b)
+    print("Saved bezier_optimal.npz. Done.")
 
 
 def memoized_bezier_optimal(angle0, angle3, file):
+
     npzfile = np.load(file)
     x = npzfile["x"]
     y = npzfile["y"]
@@ -48,5 +50,6 @@ if __name__ == "__main__":
     for x, y in zip(np.random.choice(x, 10), np.random.choice(y, 10)):
         print("trying (x,y) == ({}, {})".format(x, y))
         print(memoized_bezier_optimal(x, y, file="bezier_optimal.npz"))
-        print(_bezier_optimal(x, y))
+        a, b, result = _bezier_optimal(x, y, return_result=True)
+        print((a, b), result.nit)
         print("---")

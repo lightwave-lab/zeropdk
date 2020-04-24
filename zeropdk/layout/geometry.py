@@ -341,7 +341,7 @@ class _Line(_Point):
 
 
 @lru_cache(maxsize=128)
-def _bezier_optimal(angle0, angle3):
+def _bezier_optimal(angle0, angle3, *, return_result=False):
     """ This is a reduced problem of the bézier connection.
 
     Args:
@@ -425,36 +425,39 @@ def _bezier_optimal(angle0, angle3):
         else:
             print(f"Could not optimize. Exited with message:{result.message}")
     # print("a={:.3f}<{:.3f} b={:.3f}<{:.3f}".format(a, a_bound, b, b_bound))
-    return a, b
+    if return_result:
+        return a, b, result
+    else:
+        return a, b
 
 
-# # UNSTABLE MEMOIZATION
-# import os
-# from scipy.interpolate import interp2d
-# pwd = os.path.dirname(os.path.realpath(__file__))
-# bezier_optimal_fpath = os.path.join(pwd, 'bezier_optimal.npz')
-
-# _original_bezier_optimal = _bezier_optimal
-
-
-# def memoized_bezier_optimal(angle0, angle3, file):
-#     try:
-#         npzfile = np.load(file)
-#         x = npzfile['x']
-#         y = npzfile['y']
-#         z_a = npzfile['z_a']
-#         z_b = npzfile['z_b']
-
-#         a = interp2d(x, y, z_a)(angle0, angle3)[0]
-#         b = interp2d(x, y, z_b)(angle0, angle3)[0]
-#     except:
-#         return _original_bezier_optimal(angle0, angle3)
-#     return a, b
+# STABLE MEMOIZATION
+import os
+from scipy.interpolate import interp2d
+pwd = os.path.dirname(os.path.realpath(__file__))
+bezier_optimal_fpath = os.path.join(pwd, 'bezier_optimal.npz')
+_original_bezier_optimal = _bezier_optimal
 
 
-# from functools import partial
-# if os.path.isfile(bezier_optimal_fpath):
-#     _bezier_optimal = partial(memoized_bezier_optimal, file=bezier_optimal_fpath)
+def memoized_bezier_optimal(angle0, angle3, file):
+    try:
+        npzfile = np.load(file)
+        x = npzfile['x']
+        y = npzfile['y']
+        z_a = npzfile['z_a']
+        z_b = npzfile['z_b']
+
+        a = interp2d(x, y, z_a)(angle0, angle3)[0]
+        b = interp2d(x, y, z_b)(angle0, angle3)[0]
+        return a, b
+    except:
+        print("ERROR")
+        return _original_bezier_optimal(angle0, angle3)
+
+
+from functools import partial
+if os.path.isfile(bezier_optimal_fpath):
+    _bezier_optimal = partial(memoized_bezier_optimal, file=bezier_optimal_fpath)
 
 
 def bezier_optimal(P0, P3, angle0, angle3):
