@@ -379,17 +379,18 @@ def _bezier_optimal(angle0, angle3):
         # print(f"{a:.2f}, {b:.2f}: {main_penalty}/{constraint_penalty}")
         return main_penalty + constraint_penalty
 
-    # Initialize problem
-    a = b = 0.05
     MAX = 1.5
 
     # If these angles have opposite signs, then calculate the bounds
     # so that P1 and P2 do not *both* hit the intersection of the
     # initial tangents. This prevents loops.
-    if angle0 * angle3 < 0 and np.abs(angle3 - angle0) < np.pi:
+    if angle0 * angle3 < 0 and np.abs(angle3 - angle0) < np.pi:  # potential cross
+        # Initialize problem
+        a = b = 0.05
+
         third_angle = np.pi - np.abs(angle3) - np.abs(angle0)
-        a_bound = min(np.abs(np.sin(angle3)) / np.sin(third_angle), MAX * 3)
-        b_bound = min(np.abs(np.sin(angle0)) / np.sin(third_angle), MAX * 3)
+        a_bound = min(2 * np.abs(np.sin(angle3)) / np.sin(third_angle), MAX * 3)
+        b_bound = min(2 * np.abs(np.sin(angle0)) / np.sin(third_angle), MAX * 3)
 
         initial_simplex = np.array([[a, b], [a * 1.1, b], [a, b * 1.1]])
 
@@ -400,13 +401,14 @@ def _bezier_optimal(angle0, angle3):
             method="Nelder-Mead",
             options=dict(initial_simplex=initial_simplex),
         )
-    else:
-
+    else:  # no potential cross
+        # Initialize problem
+        a = b = 0.3
         initial_simplex = np.array([[a, b], [a * 1.1, b], [a, b * 1.1]])
         a_bound = b_bound = MAX
 
         result = minimize(
-            lambda x: J(x[0], x[1], a_bound, b_bound),
+            lambda x: J(x[0], x[1], a_bound, b_bound, cross=False),
             np.array([a, b]),
             method="Nelder-Mead",
             options=dict(initial_simplex=initial_simplex),
