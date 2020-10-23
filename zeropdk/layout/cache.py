@@ -23,9 +23,12 @@ def produce_hash(self, extra=None):
     )
 
     diff_params = dict(self.params)
+    # str(diff_params) calls __repr__ in inner values, instead of __str__ ()
+    # therefore it would fail for instances without readable __repr__ methods
+    str_diff_params = "{%s}"%', '.join("%r: %s"%p for p in diff_params.items())
 
     long_hash_pcell = sha256(
-        (source_code + str(diff_params) + self.name + str(extra)).encode()
+        (source_code + str_diff_params + self.name + str(extra)).encode()
     ).hexdigest()
     short_hash_pcell = long_hash_pcell[0:7]
     return short_hash_pcell
