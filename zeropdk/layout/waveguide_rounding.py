@@ -9,15 +9,14 @@ from zeropdk.layout.waveguides import layout_waveguide
 
 
 def angle_between(v1, v0):
-    """ Compute angle in radians between v1 and v0.
-        Rotation angle from v0 to v1 counter-clockwise.
+    """Compute angle in radians between v1 and v0.
+    Rotation angle from v0 to v1 counter-clockwise.
     """
     return fix_angle(atan2(v1.y, v1.x) - atan2(v0.y, v0.x))
 
 
 def project(P, A, B):
-    """ Projects a point P into a line defined by A and B
-    """
+    """Projects a point P into a line defined by A and B"""
     AB = B - A
     eAB = AB / AB.norm()
 
@@ -26,8 +25,7 @@ def project(P, A, B):
 
 
 def bisect(V1, V2):
-    """ Bisects two vectors V1 and V2. Returns a vector.
-    """
+    """Bisects two vectors V1 and V2. Returns a vector."""
 
     # from https://math.stackexchange.com/questions/2285965/how-to-find-the-vector-formula-for-the-bisector-of-given-two-vectors
 
@@ -36,8 +34,7 @@ def bisect(V1, V2):
 
 
 def intersect(A, eA, B, eB):
-    """ Computes intersection between lines defined by points A/B and vectors eA/eB
-    """
+    """Computes intersection between lines defined by points A/B and vectors eA/eB"""
 
     # from http://mathforum.org/library/drmath/view/62814.html
 
@@ -333,7 +330,7 @@ def solve_4(A, B, C, D, radius):
 
 
 def compute_rounded_path(points, radius):
-    """ Transforms a list of points into sections of arcs and straight lines.
+    """Transforms a list of points into sections of arcs and straight lines.
     Approach:
         - Go through the list of points in triplets (A, B, C).
         - Call solve3 in (A,B,C), which returns a rounded path plus (Bprime, C)
@@ -440,8 +437,7 @@ class _Taper(_Path):
 
 
 def _compute_tapered_line(line, waveguide_width, taper_width, taper_length):
-    """ Takes a _Line object and computes two tapers with taper_width and taper_length
-    """
+    """Takes a _Line object and computes two tapers with taper_width and taper_length"""
 
     minimum_length = (
         30 + 2 * taper_length

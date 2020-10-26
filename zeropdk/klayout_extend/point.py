@@ -71,7 +71,7 @@ def pyaPoint__init__(self, *args):
         self.x, self.y = args
     except (TypeError, ValueError):
         if len(args) == 1:
-            p, = args
+            (p,) = args
             try:
                 self.x = p.x
                 self.y = p.y

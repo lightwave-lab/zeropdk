@@ -99,11 +99,11 @@ class PCellParameter:
 
 
 class objectview(MutableMapping):
-    """ Basically allows us to access dictionary values as dict.x
-        rather than dict['x']
+    """Basically allows us to access dictionary values as dict.x
+    rather than dict['x']
 
-        The fact that it is a MutableMapping means that it is essentially
-        a writable dictionary. We recommend you only use it as read-only.
+    The fact that it is a MutableMapping means that it is essentially
+    a writable dictionary. We recommend you only use it as read-only.
 
     """
 
@@ -148,7 +148,7 @@ class objectview(MutableMapping):
 # https://stackoverflow.com/questions/3387691/how-to-perfectly-override-a-dict
 # Mapping is an abstract class which implements a read-only dict
 class ParamContainer(Mapping):
-    """ Holds a dictionary-like set of parameters.
+    """Holds a dictionary-like set of parameters.
     The idea is to use them as such:
 
     >>> pc = ParamContainer()
@@ -166,10 +166,10 @@ class ParamContainer(Mapping):
     _current_values = None
 
     def __init__(self, *args):
-        """ Two ways of initializing:
-            1. ParamContainer(pc_obj), where pc_obj is another param_container
-            2. ParamContainer(param1, param2, param3, ...), where param is of type
-                PCellParameter
+        """Two ways of initializing:
+        1. ParamContainer(pc_obj), where pc_obj is another param_container
+        2. ParamContainer(param1, param2, param3, ...), where param is of type
+            PCellParameter
         """
         self._container = dict()
         self._current_values = dict()
@@ -331,7 +331,7 @@ def place_cell(
     relative_to=None,
     transform_into=False,
 ):
-    """ Places an pya cell and return ports with updated positions
+    """Places an pya cell and return ports with updated positions
     Args:
         parent_cell: cell to place into
         pcell, ports_dict: result of KLayoutPCell.pcell call
@@ -423,11 +423,11 @@ class PCell:
                 )
 
     def get_cell_params(self):
-        """ returns a *copy* of the parameter dictionary
+        """returns a *copy* of the parameter dictionary
 
-            Returns:
-                object: objectview of full parameter structure
-                access with cp.name instead of cp['name']
+        Returns:
+            object: objectview of full parameter structure
+            access with cp.name instead of cp['name']
         """
         cell_params = dict(self.params)
         return objectview(cell_params)
@@ -440,7 +440,7 @@ class PCell:
     def place_cell(
         self, parent_cell, placement_origin, relative_to=None, transform_into=False
     ):
-        """ Places this pcell into parent_cell and return ports with
+        """Places this pcell into parent_cell and return ports with
             updated position and orientation.
         Args:
             parent_cell: cell to place into
@@ -472,13 +472,13 @@ class PCell:
 
 def GDSCell(cell_name, filename, gds_dir):
     """
-        Args:
-            cell_name: cell within that file.
-            filename: is the gds file name.
-            gds_dir: where to look for file
+    Args:
+        cell_name: cell within that file.
+        filename: is the gds file name.
+        gds_dir: where to look for file
 
-        Returns:
-            (class) a GDS_cell_base class that can be inherited
+    Returns:
+        (class) a GDS_cell_base class that can be inherited
     """
 
     assert gds_dir is not None

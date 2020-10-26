@@ -70,7 +70,7 @@ layer_opening = PCellParameter(
 
 
 class OrientedCell(PCell):
-    """ A standard cell that has the following parameters:
+    """A standard cell that has the following parameters:
     - origin: Point
     - ex: unit vector of x axis
     - ey: unit vector of y axis
@@ -86,7 +86,7 @@ class OrientedCell(PCell):
 
 
 class DCPad(OrientedCell):
-    """ A standard DC pad.
+    """A standard DC pad.
 
     Ports: el0
     """

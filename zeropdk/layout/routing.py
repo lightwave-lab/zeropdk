@@ -6,7 +6,11 @@ from contextlib import contextmanager
 
 # from siepic_ebeam_pdk import EBEAM_TECH
 from zeropdk.layout.geometry import rotate90, manhattan_intersection, cluster_ports
-from zeropdk.layout.waveguides import layout_waveguide, layout_waveguide_angle, layout_waveguide_angle2
+from zeropdk.layout.waveguides import (
+    layout_waveguide,
+    layout_waveguide_angle,
+    layout_waveguide_angle2,
+)
 
 logger = logging.getLogger()
 
@@ -33,8 +37,7 @@ TAPER_LENGTH = 20
 def layout_ebeam_waveguide_from_points(
     cell, points_list, radius=None, width=None, taper_width=None, taper_length=None
 ):
-    """ Takes a list of points and lays out a rounded waveguide with optional tapers
-    """
+    """Takes a list of points and lays out a rounded waveguide with optional tapers"""
 
     TECHNOLOGY = EBEAM_TECH
     if radius is None:
@@ -74,20 +77,20 @@ def ensure_layer(layout, layer):
 def common_layout_manhattan_traces(
     cell, layer1, layer2, layervia, via_cell_placer, path, ex, initiate_with_via=False
 ):
-    """ Lays out a manhattan trace, potentially with vias
+    """Lays out a manhattan trace, potentially with vias
 
-        Args:
-            layer1 and layer2 are given to layout.LayerInfo(layer), generally
-                layer2 is on top
-            via_cell_placer: returns a cell when called with
-                via_cell_placer(parent_cell, pya.DPoint origin, width, layer1, layer2, layervia, ex)
-            path: list of tuples containing necessary info ((x, y) or pya.DPoint, layer, width)
+    Args:
+        layer1 and layer2 are given to layout.LayerInfo(layer), generally
+            layer2 is on top
+        via_cell_placer: returns a cell when called with
+            via_cell_placer(parent_cell, pya.DPoint origin, width, layer1, layer2, layervia, ex)
+        path: list of tuples containing necessary info ((x, y) or pya.DPoint, layer, width)
 
-        Returns:
-            path
+    Returns:
+        path
 
-        Algorithm places a via when there is a change of layers. To terminate with a via,
-        have the last layer be different than the penultimate one.
+    Algorithm places a via when there is a change of layers. To terminate with a via,
+    have the last layer be different than the penultimate one.
     """
 
     assert isinstance(ex, (pya.DPoint, pya.DVector))
@@ -266,7 +269,7 @@ def bus_route_Z(
 def append_Z_trace_vertical(
     path, new_point, height, ex, middle_layer=None, middle_taper=False
 ):
-    """ Adds new_point to the path list plus TWO Z or S manhattan interesections.
+    """Adds new_point to the path list plus TWO Z or S manhattan interesections.
     Args:
         path: list of tuples containing necessary info (pya.DPoint, layer, width)
         new_point: tuple ((x, y) or pya.DPoint, layer, width)
@@ -343,8 +346,7 @@ from math import pi
 
 
 def layout_connect_ports(cell, layer, port_from, port_to, smooth=True):
-    """ Places an "optimal" bezier curve from port_from to port_to.
-    """
+    """Places an "optimal" bezier curve from port_from to port_to."""
 
     if port_from.name.startswith("el"):
         assert port_to.name.startswith("el")
@@ -370,7 +372,7 @@ def layout_connect_ports(cell, layer, port_from, port_to, smooth=True):
 
 
 def layout_connect_ports_angle(cell, layer, port_from, port_to, angle):
-    """ Places an "optimal" bezier curve from port_from to port_to, with a fixed orientation angle.
+    """Places an "optimal" bezier curve from port_from to port_to, with a fixed orientation angle.
 
     Args:
         angle: degrees
@@ -395,7 +397,7 @@ def layout_connect_ports_angle(cell, layer, port_from, port_to, angle):
 
 
 def layout_connect_ports_angle2(cell, layer, port_from, port_to, angle_from, angle_to):
-    """ Places an "optimal" bezier curve from port_from to port_to, with a fixed orientation angle.
+    """Places an "optimal" bezier curve from port_from to port_to, with a fixed orientation angle.
 
     Args:
         angle: degrees
@@ -420,11 +422,11 @@ def layout_connect_ports_angle2(cell, layer, port_from, port_to, angle_from, ang
 
 
 def append_L_trace(path, new_point, middle_layer, ex):
-    """ Adds new_point to the path list plus ONE L manhattan intersection.
+    """Adds new_point to the path list plus ONE L manhattan intersection.
 
-        Args:
-            path: list of tuples containing necessary info ((x, y) or pya.DPoint, layer, width)
-            new_point: tuple ((x, y) or pya.DPoint, layer, width)
+    Args:
+        path: list of tuples containing necessary info ((x, y) or pya.DPoint, layer, width)
+        new_point: tuple ((x, y) or pya.DPoint, layer, width)
     """
 
     assert len(path) > 0

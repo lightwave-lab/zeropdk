@@ -21,7 +21,7 @@ debug = False
 
 
 def waveguide_dpolygon(points_list, width, dbu, smooth=True):
-    """ Returns a polygon outlining a waveguide.
+    """Returns a polygon outlining a waveguide.
 
     This was updated over many iterations of failure. It can be used for both
     smooth optical waveguides or DC metal traces with corners. It is better
@@ -171,7 +171,10 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
                 points_high.append(intersect_point)
             else:
                 cos_dd = cos_angle(delta_next, delta_prev)
-                if width * (1 - cos_dd) > dbu and fix_angle(theta_next - theta_prev) < 0:
+                if (
+                    width * (1 - cos_dd) > dbu
+                    and fix_angle(theta_next - theta_prev) < 0
+                ):
                     points_high.append(backward_point_high)
                     points_high.append(forward_point_high)
                 else:
@@ -186,7 +189,10 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
                 points_low.append(intersect_point)
             else:
                 cos_dd = cos_angle(delta_next, delta_prev)
-                if width * (1 - cos_dd) > dbu and fix_angle(theta_next - theta_prev) > 0:
+                if (
+                    width * (1 - cos_dd) > dbu
+                    and fix_angle(theta_next - theta_prev) > 0
+                ):
                     points_low.append(backward_point_low)
                     points_low.append(forward_point_low)
                 else:
@@ -260,7 +266,7 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
 
 
 def layout_waveguide(cell, layer, points_list, width, smooth=False):
-    """ Lays out a waveguide (or trace) with a certain width along given points.
+    """Lays out a waveguide (or trace) with a certain width along given points.
 
     This is very useful for laying out Bezier curves with or without adiabatic tapers.
 
@@ -282,7 +288,7 @@ def layout_waveguide(cell, layer, points_list, width, smooth=False):
 
 
 def layout_waveguide_angle(cell, layer, points_list, width, angle):
-    """ Lays out a waveguide (or trace) with a certain width along
+    """Lays out a waveguide (or trace) with a certain width along
     given points and with fixed orientation at all points.
 
     This is very useful for laying out Bezier curves with or without adiabatic tapers.
@@ -298,7 +304,7 @@ def layout_waveguide_angle(cell, layer, points_list, width, angle):
 
 
 def layout_waveguide_angle2(cell, layer, points_list, width, angle_from, angle_to):
-    """ Lays out a waveguide (or trace) with a certain width along
+    """Lays out a waveguide (or trace) with a certain width along
     given points and with fixed orientation at all points.
 
     This is very useful for laying out Bezier curves with or without adiabatic tapers.

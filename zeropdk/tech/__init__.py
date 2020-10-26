@@ -9,9 +9,9 @@ class Tech:
             self.layers = dict()
 
     def add_layer(self, layer_name, layer_def):
-        """ Adds a layer to the technology file.
-            layer_name: str: name of layer. (Useless in GDS, useful in OASIS)
-            layer_def: str: 10/0, 10 = layer index, 0, datatype
+        """Adds a layer to the technology file.
+        layer_name: str: name of layer. (Useless in GDS, useful in OASIS)
+        layer_def: str: 10/0, 10 = layer index, 0, datatype
         """
 
         layer_idx, datatype = layer_def.split("/")
@@ -22,6 +22,7 @@ class Tech:
     @classmethod
     def load_from_xml(cls, lyp_filename):
         import os
+
         lyp_filepath = os.path.realpath(lyp_filename)
         with open(lyp_filepath, "r") as file:
             layer_dict = xml_to_dict(file.read())["layer-properties"]["properties"]
@@ -46,7 +47,9 @@ class Tech:
                 try:
                     layer_map[k["name"]] = layerInfo
                 except TypeError as e:
-                    new_message = "Bad name for layer {}. Check your .lyp XML file for errors.".format(layerInfo)
+                    new_message = "Bad name for layer {}. Check your .lyp XML file for errors.".format(
+                        layerInfo
+                    )
                     raise TypeError(new_message) from e
 
         # layer_map should contain values like '12/0'

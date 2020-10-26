@@ -20,10 +20,10 @@ def cross_prod(p1, p2):
 
 
 def find_arc(A, B, C):
-    """ Finds the arc of a circle containing points A, B, C.
-        Returns the center of the circle, and the radius:
-            (O[Point], R)
-        If A,B,C falls on a line, the center is None and the radius is infinite.
+    """Finds the arc of a circle containing points A, B, C.
+    Returns the center of the circle, and the radius:
+        (O[Point], R)
+    If A,B,C falls on a line, the center is None and the radius is infinite.
     """
 
     # check if it is not a valid triangle
@@ -40,10 +40,8 @@ def find_arc(A, B, C):
     D = (A + B) / 2
     E = (B + C) / 2
 
-    LHS_sys = np.array([[BC * ex, BC * ey],
-                       [AB * ex, AB * ey]])
-    RHS_sys = np.array([[E * BC],
-                        [D * AB]])
+    LHS_sys = np.array([[BC * ex, BC * ey], [AB * ex, AB * ey]])
+    RHS_sys = np.array([[E * BC], [D * AB]])
 
     sol = np.linalg.inv(LHS_sys).dot(RHS_sys)
     h, k = sol.flatten()
@@ -74,7 +72,7 @@ def project(v, ex, ey=None):
 
 
 def curve_length(curve, t0=0, t1=1):
-    """ Computes the total length of a curve.
+    """Computes the total length of a curve.
 
     Args:
         curve: list of Points, or
@@ -108,12 +106,12 @@ def curve_length(curve, t0=0, t1=1):
 
 
 def manhattan_intersection(vertical_point, horizontal_point, ex):
-    """ returns the point that intersects vertical_point's x coordinate
-        and horizontal_point's y coordinate.
+    """returns the point that intersects vertical_point's x coordinate
+    and horizontal_point's y coordinate.
 
-        Args: ex (Vector/Point): orientation of x axis.
+    Args: ex (Vector/Point): orientation of x axis.
 
-        Caveat: this formula only works for orthogonal coordinate systems.
+    Caveat: this formula only works for orthogonal coordinate systems.
     """
     ey = rotate90(ex)
     return vertical_point * ex * ex + horizontal_point * ey * ey
@@ -214,7 +212,7 @@ def bezier_line(P0, P1, P2, P3):
 
 
 def curvature_bezier(P0, P1, P2, P3):
-    """ Measures the curvature of the Bézier curve at every point t
+    """Measures the curvature of the Bézier curve at every point t
 
     Returns:
         Function of parameter t (1d array)
@@ -300,9 +298,7 @@ class _Point(object):
         y = self.y - other.y
         return self.__class__(x, y)
 
-    __array_priority__ = (
-        MAGIC_NUMBER
-    )  #: This allows rmul to be called first. See https://stackoverflow.com/questions/38229953/array-and-rmul-operator-in-python-numpy"""
+    __array_priority__ = MAGIC_NUMBER  #: This allows rmul to be called first. See https://stackoverflow.com/questions/38229953/array-and-rmul-operator-in-python-numpy"""
 
     def __mul__(self, factor):
         """ This implements P * factor"""
@@ -342,7 +338,7 @@ class _Line(_Point):
 
 @lru_cache(maxsize=128)
 def _bezier_optimal(angle0, angle3, *, return_result=False):
-    """ This is a reduced problem of the bézier connection.
+    """This is a reduced problem of the bézier connection.
 
     Args:
         angle0: starting angle in radians
@@ -371,7 +367,9 @@ def _bezier_optimal(angle0, angle3, *, return_result=False):
 
         # Only for potentially crossing P0-P1, P1-P2 segments (prevents loops)
         if cross:
-            constraint_penalty -= np.log(np.maximum(1e-3, np.minimum(a_max - a, b_max - b)))
+            constraint_penalty -= np.log(
+                np.maximum(1e-3, np.minimum(a_max - a, b_max - b))
+            )
         else:
             constraint_penalty += np.exp((a - a_max) / 0.05)
             constraint_penalty += np.exp((b - b_max) / 0.05)
@@ -434,18 +432,19 @@ def _bezier_optimal(angle0, angle3, *, return_result=False):
 # STABLE MEMOIZATION
 import os
 from scipy.interpolate import interp2d
+
 pwd = os.path.dirname(os.path.realpath(__file__))
-bezier_optimal_fpath = os.path.join(pwd, 'bezier_optimal.npz')
+bezier_optimal_fpath = os.path.join(pwd, "bezier_optimal.npz")
 _original_bezier_optimal = _bezier_optimal
 
 
 def memoized_bezier_optimal(angle0, angle3, file):
     try:
         npzfile = np.load(file)
-        x = npzfile['x']
-        y = npzfile['y']
-        z_a = npzfile['z_a']
-        z_b = npzfile['z_b']
+        x = npzfile["x"]
+        y = npzfile["y"]
+        z_a = npzfile["z_a"]
+        z_b = npzfile["z_b"]
 
         a = interp2d(x, y, z_a)(angle0, angle3)[0]
         b = interp2d(x, y, z_b)(angle0, angle3)[0]
@@ -456,12 +455,13 @@ def memoized_bezier_optimal(angle0, angle3, file):
 
 
 from functools import partial
+
 if os.path.isfile(bezier_optimal_fpath):
     _bezier_optimal = partial(memoized_bezier_optimal, file=bezier_optimal_fpath)
 
 
 def bezier_optimal(P0, P3, angle0, angle3):
-    """ Computes the optimal bezier curve from P0 to P3 with angles 0 and 3
+    """Computes the optimal bezier curve from P0 to P3 with angles 0 and 3
 
     Args:
         P0, P3: Point
@@ -505,8 +505,7 @@ try:
     _bezier_optimal_pure = bezier_optimal
 
     def bezier_optimal(P0, P3, *args, **kwargs):
-        """ If inside KLayout, return computed list of KLayout points.
-        """
+        """If inside KLayout, return computed list of KLayout points."""
         P0 = _Point(P0.x, P0.y)
         P3 = _Point(P3.x, P3.y)
         scale = (P3 - P0).norm()  # rough length.

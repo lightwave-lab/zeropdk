@@ -25,7 +25,7 @@ def produce_hash(self, extra=None):
     diff_params = dict(self.params)
     # str(diff_params) calls __repr__ in inner values, instead of __str__ ()
     # therefore it would fail for instances without readable __repr__ methods
-    str_diff_params = "{%s}"%', '.join("%r: %s"%p for p in diff_params.items())
+    str_diff_params = "{%s}" % ", ".join("%r: %s" % p for p in diff_params.items())
 
     long_hash_pcell = sha256(
         (source_code + str_diff_params + self.name + str(extra)).encode()
@@ -35,7 +35,7 @@ def produce_hash(self, extra=None):
 
 
 def read_layout(layout, gds_filename, disambiguation_name=""):
-    """ Reads the layout in the gds file and imports all cells into
+    """Reads the layout in the gds file and imports all cells into
     layout without overwriting existing cells."""
     global layer_map_dict
     load_options = pya.LoadLayoutOptions()
@@ -50,7 +50,9 @@ def read_layout(layout, gds_filename, disambiguation_name=""):
     cell_indices = {cell.name: cell.cell_index() for cell in cell_list}
 
     # this assumes that there are no duplicate names, which is true in gds (let's assert)
-    assert len(cell_list) == len(cell_indices), "There is a duplicate cell name in the current layout"
+    assert len(cell_list) == len(
+        cell_indices
+    ), "There is a duplicate cell name in the current layout"
     for i in cell_indices.values():
         layout.rename_cell(i, "")
 
@@ -66,7 +68,9 @@ def read_layout(layout, gds_filename, disambiguation_name=""):
     # - if there is a duplicate even with the disambiguated name, add a counter
 
     if disambiguation_name != "":
-        disambiguation_name = "_" + disambiguation_name  # new cell name will be duplicate_name_disambiguation_name
+        disambiguation_name = (
+            "_" + disambiguation_name
+        )  # new cell name will be duplicate_name_disambiguation_name
 
     prune_cells_indices = []
     used_cell_names = list(cell_indices.keys())
@@ -82,9 +86,13 @@ def read_layout(layout, gds_filename, disambiguation_name=""):
                 used_cell_names.append(name_cached_cell + disambiguation_name)
             else:
                 k = 1
-                while (name_cached_cell + disambiguation_name + f"_{k}") in used_cell_names:
+                while (
+                    name_cached_cell + disambiguation_name + f"_{k}"
+                ) in used_cell_names:
                     k += 1
-                layout.rename_cell(i_duplicate, name_cached_cell + disambiguation_name + f"_{k}")
+                layout.rename_cell(
+                    i_duplicate, name_cached_cell + disambiguation_name + f"_{k}"
+                )
                 used_cell_names.append(name_cached_cell + disambiguation_name + f"_{k}")
 
     for i_pruned in prune_cells_indices:
@@ -103,7 +111,7 @@ from functools import partial
 
 
 def cache_cell(cls=None, *, extra_hash=None, cache_dir=cache_dir):
-    """ Caches results of pcell call to save build time.
+    """Caches results of pcell call to save build time.
 
     First, it computes a hash based on:
         1. the source code of the class and its bases.
