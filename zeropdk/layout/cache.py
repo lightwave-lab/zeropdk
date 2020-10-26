@@ -34,7 +34,7 @@ def produce_hash(self, extra=None):
     return short_hash_pcell
 
 
-def read_layout(layout, gds_filename):
+def read_layout(layout, gds_filename, disambiguation_name=""):
     """ Reads the layout in the gds file and imports all cells into
     layout without overwriting existing cells."""
     global layer_map_dict
@@ -48,14 +48,28 @@ def read_layout(layout, gds_filename):
     # take out the pcells
     cell_list = [cell for cell in layout.each_cell()]
     cell_indices = {cell.name: cell.cell_index() for cell in cell_list}
+
+    # this assumes that there are no duplicate names, which is true in gds (let's assert)
+    assert len(cell_list) == len(cell_indices), "There is a duplicate cell name in the current layout"
     for i in cell_indices.values():
         layout.rename_cell(i, "")
+
+    # Read the new gds_filename
     lmap = layout.read(gds_filename, load_options)
-    # in the new layout, get all cells names
+
+    # in the new layout, get all cell names, assuming, again, that there are no duplicates
     cell_names2 = [(cell.cell_index(), cell.name) for cell in layout.each_cell()]
 
-    # make those cells point to older cells
+    # make those cells point to older cells if they are duplicate:
+    # - if it is a cached cell, reuse the cell in the layout
+    # - if it is not, then disambiguate by using the disambiguation_name
+    # - if there is a duplicate even with the disambiguated name, add a counter
+
+    if disambiguation_name != "":
+        disambiguation_name += "$"  # new cell name will be disambiguation_name$duplicate_name
+
     prune_cells_indices = []
+    used_cell_names = list(cell_indices.keys())
     for i_duplicate, name_cached_cell in cell_names2:
         if name_cached_cell in cell_indices.keys():
             if name_cached_cell.startswith("cache_"):
@@ -63,20 +77,23 @@ def read_layout(layout, gds_filename):
                     cell_instance = parent_inst_array.child_inst()
                     cell_instance.cell = layout.cell(cell_indices[name_cached_cell])
                 prune_cells_indices.append(i_duplicate)
+            elif disambiguation_name + name_cached_cell not in used_cell_names:
+                layout.rename_cell(i_duplicate, disambiguation_name + name_cached_cell)
+                used_cell_names.append(disambiguation_name + name_cached_cell)
             else:
-                # print('RENAME', name_cached_cell)
                 k = 1
-                while (name_cached_cell + f"_{k}") in cell_indices.keys():
+                while (disambiguation_name + name_cached_cell + f"_{k}") in used_cell_names:
                     k += 1
-                layout.rename_cell(i_duplicate, name_cached_cell + f"_{k}")
+                layout.rename_cell(i_duplicate, disambiguation_name + name_cached_cell + f"_{k}")
+                used_cell_names.append(disambiguation_name + name_cached_cell + f"_{k}")
 
     for i_pruned in prune_cells_indices:
         # print('deleting cell', layout.cell(i_pruned).name)
         layout.prune_cell(i_pruned, -1)
 
     # every conflict should have been caught above
-    for name, i in cell_indices.items():
-        layout.rename_cell(i, name)
+    for name, cell_index in cell_indices.items():
+        layout.rename_cell(cell_index, name)
 
     layer_map_dict[layout] = lmap
     return lmap
@@ -152,7 +169,7 @@ def cache_cell(cls=None, *, extra_hash=None, cache_dir=cache_dir):
                 else:
                     print("r", end="", flush=True)
                 if not layout.has_cell(cache_fname):
-                    read_layout(layout, cache_fpath_gds)
+                    read_layout(layout, cache_fpath_gds, disambiguation_name=cellname)
                 retrieved_cell = layout.cell(cache_fname)
                 cell.insert(
                     pya.DCellInstArray(
@@ -181,6 +198,7 @@ def cache_cell(cls=None, *, extra_hash=None, cache_dir=cache_dir):
                     print("w", end="", flush=True)
 
                 cellname, filled_cell.name = filled_cell.name, cache_fname
+                # There can be duplicate cell names in subcells here.
                 filled_cell.write(cache_fpath_gds)
                 with open(cache_fpath_pkl, "wb") as file:
                     pickle.dump((ports, short_hash_pcell, cellname), file)
@@ -191,7 +209,7 @@ def cache_cell(cls=None, *, extra_hash=None, cache_dir=cache_dir):
                 del empty_layout
                 assert not layout.has_cell(cache_fname)
 
-                read_layout(layout, cache_fpath_gds)
+                read_layout(layout, cache_fpath_gds, disambiguation_name=cellname)
                 retrieved_cell = layout.cell(cache_fname)
                 cell.insert(
                     pya.DCellInstArray(
