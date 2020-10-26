@@ -66,7 +66,7 @@ def read_layout(layout, gds_filename, disambiguation_name=""):
     # - if there is a duplicate even with the disambiguated name, add a counter
 
     if disambiguation_name != "":
-        disambiguation_name += "$"  # new cell name will be disambiguation_name$duplicate_name
+        disambiguation_name = "_" + disambiguation_name  # new cell name will be duplicate_name_disambiguation_name
 
     prune_cells_indices = []
     used_cell_names = list(cell_indices.keys())
@@ -77,15 +77,15 @@ def read_layout(layout, gds_filename, disambiguation_name=""):
                     cell_instance = parent_inst_array.child_inst()
                     cell_instance.cell = layout.cell(cell_indices[name_cached_cell])
                 prune_cells_indices.append(i_duplicate)
-            elif disambiguation_name + name_cached_cell not in used_cell_names:
-                layout.rename_cell(i_duplicate, disambiguation_name + name_cached_cell)
-                used_cell_names.append(disambiguation_name + name_cached_cell)
+            elif name_cached_cell + disambiguation_name not in used_cell_names:
+                layout.rename_cell(i_duplicate, name_cached_cell + disambiguation_name)
+                used_cell_names.append(name_cached_cell + disambiguation_name)
             else:
                 k = 1
-                while (disambiguation_name + name_cached_cell + f"_{k}") in used_cell_names:
+                while (name_cached_cell + disambiguation_name + f"_{k}") in used_cell_names:
                     k += 1
-                layout.rename_cell(i_duplicate, disambiguation_name + name_cached_cell + f"_{k}")
-                used_cell_names.append(disambiguation_name + name_cached_cell + f"_{k}")
+                layout.rename_cell(i_duplicate, name_cached_cell + disambiguation_name + f"_{k}")
+                used_cell_names.append(name_cached_cell + disambiguation_name + f"_{k}")
 
     for i_pruned in prune_cells_indices:
         # print('deleting cell', layout.cell(i_pruned).name)
