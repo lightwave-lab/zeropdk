@@ -30,9 +30,7 @@ def patch_simple_polygon(backend):
                 ex = backend.DPoint(1, 0)
             ey = rotate90(ex)
 
-            polygon_dpoints_transformed = [
-                center + p.x * ex + p.y * ey for p in self.each_point()
-            ]
+            polygon_dpoints_transformed = [center + p.x * ex + p.y * ey for p in self.each_point()]
             self.assign(_SimplePolygon(polygon_dpoints_transformed))
             return self
 
@@ -65,9 +63,7 @@ def patch_simple_polygon(backend):
                             [left_most.y, right_most.y],
                         )
                         if y_bounds[0] < y_intersect and y_bounds[1] > y_intersect:
-                            return backend.DPoint(
-                                float(x_bounds[0]), float(y_intersect)
-                            )
+                            return backend.DPoint(float(x_bounds[0]), float(y_intersect))
                 return None
 
             def intersect(p1, p2, x_bounds, y_bounds):
@@ -196,9 +192,7 @@ def patch_simple_polygon(backend):
 
             dpoly = backend.DPolygon(self)
             dpoly.size(dx, 5)
-            dpoly = backend.EdgeProcessor().simple_merge_p2p(
-                [dpoly.to_itype(dbu)], False, False, 1
-            )
+            dpoly = backend.EdgeProcessor().simple_merge_p2p([dpoly.to_itype(dbu)], False, False, 1)
             dpoly = dpoly[0].to_dtype(dbu)  # backend.DPolygon
 
             def norm(p):

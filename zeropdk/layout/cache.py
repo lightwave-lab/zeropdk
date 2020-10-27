@@ -13,19 +13,16 @@ layer_map_dict = dict()
 CACHE_ACTIVATED = os.environ.get("ZEROPDK_CACHE_ACTIVATED", "true") == "true"
 CACHE_DIR = os.environ.get("ZEROPDK_CACHE_DIR", os.path.join(os.getcwd(), "cache"))
 
+
 def produce_hash(self, extra=None):
     """Produces a hash of a PCell instance based on:
-        1. the source code of the class and its bases.
-        2. the non-default parameter with which the pcell method is called
-        3. the name of the pcell
+    1. the source code of the class and its bases.
+    2. the non-default parameter with which the pcell method is called
+    3. the name of the pcell
     """
     # copy source code of class and all its ancestors
     source_code = "".join(
-        [
-            inspect.getsource(klass)
-            for klass in self.__class__.__mro__
-            if issubclass(klass, PCell)
-        ]
+        [inspect.getsource(klass) for klass in self.__class__.__mro__ if issubclass(klass, PCell)]
     )
 
     diff_params = dict(self.params)
@@ -92,17 +89,13 @@ def read_layout(layout, gds_filename, disambiguation_name=""):
                 used_cell_names.append(name_cached_cell + disambiguation_name)
             else:
                 k = 1
-                while (
-                    name_cached_cell + disambiguation_name + f"_{k}"
-                ) in used_cell_names:
+                while (name_cached_cell + disambiguation_name + f"_{k}") in used_cell_names:
                     k += 1
-                layout.rename_cell(
-                    i_duplicate, name_cached_cell + disambiguation_name + f"_{k}"
-                )
+                layout.rename_cell(i_duplicate, name_cached_cell + disambiguation_name + f"_{k}")
                 used_cell_names.append(name_cached_cell + disambiguation_name + f"_{k}")
 
     for i_pruned in prune_cells_indices:
-        logger.debug('deleting cell ' + layout.cell(i_pruned).name)
+        logger.debug("deleting cell " + layout.cell(i_pruned).name)
         layout.prune_cell(i_pruned, -1)
 
     # every conflict should have been caught above
@@ -174,7 +167,9 @@ def cache_cell(cls=None, *, extra_hash=None, cache_dir=CACHE_DIR):
 
             if os.path.isfile(cache_fpath_gds) and os.path.isfile(cache_fpath_pkl):
                 with open(cache_fpath_pkl, "rb") as file:
-                    ports, read_short_hash_pcell, cellname = pickle.load(file)  # pylint: disable=unused-variable
+                    ports, read_short_hash_pcell, cellname = pickle.load(
+                        file
+                    )  # pylint: disable=unused-variable
 
                 logger.debug(f"Reading from cache: {cache_fname}: {cellname}, {ports}")
                 print("r", end="", flush=True)
@@ -190,7 +185,9 @@ def cache_cell(cls=None, *, extra_hash=None, cache_dir=CACHE_DIR):
                 # cell.move_tree(retrieved_cell)
             else:
                 if layout.has_cell(cache_fname):
-                    logger.warning(f"WARNING: {cache_fname_gds} does not exist but {cache_fname} is in layout.")
+                    logger.warning(
+                        f"WARNING: {cache_fname_gds} does not exist but {cache_fname} is in layout."
+                    )
 
                 # populating .gds and .pkl
                 empty_layout = pya.Layout()

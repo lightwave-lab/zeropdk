@@ -106,9 +106,7 @@ class _Arc:
         arc_function = lambda t: np.array([r * np.cos(t), r * np.sin(t)])
 
         # in the function below, theta_start must be smaller than theta_end
-        t, coords = sample_function(
-            arc_function, [theta_start, theta_end], tol=0.002 / r
-        )
+        t, coords = sample_function(arc_function, [theta_start, theta_end], tol=0.002 / r)
 
         # This yields a better polygon
         # The idea is to place a point right after the first one, to
@@ -128,9 +126,7 @@ class _Arc:
         return dpoints_list
 
     def __repr__(self):
-        return "Arc({P1}, {C}, {P2}, {CCW})".format(
-            P1=self.P1, C=self.C, P2=self.P2, CCW=self.ccw
-        )
+        return "Arc({P1}, {C}, {P2}, {CCW})".format(P1=self.P1, C=self.C, P2=self.P2, CCW=self.ccw)
 
 
 class _Line:
@@ -364,15 +360,13 @@ def compute_rounded_path(points, radius):
         except ClearanceRewind:
             if not can_rewind:
                 raise RuntimeError(
-                    "Not enough space for enough turns: Cannot solve:",
-                    *points_left[0:3]
+                    "Not enough space for enough turns: Cannot solve:", *points_left[0:3]
                 )
             points_left = old_points_left
             rounded_path = old_rounded_path
             if len(points_left[0:4]) < 4:
                 raise RuntimeError(
-                    "Not enough space for enough turns: Cannot solve:",
-                    *points_left[0:4]
+                    "Not enough space for enough turns: Cannot solve:", *points_left[0:4]
                 )
             solution, rest_points = solve_4(*points_left[0:4], radius)
             old_points_left = points_left[:]
@@ -381,8 +375,7 @@ def compute_rounded_path(points, radius):
         except ClearanceForward:
             if len(points_left[0:4]) < 4:
                 raise RuntimeError(
-                    "Not enough space for enough turns: Cannot solve:",
-                    *points_left[0:4]
+                    "Not enough space for enough turns: Cannot solve:", *points_left[0:4]
                 )
             solution, rest_points = solve_4(*points_left[0:4], radius)
             old_points_left = points_left[:]
@@ -439,9 +432,7 @@ class _Taper(_Path):
 def _compute_tapered_line(line, waveguide_width, taper_width, taper_length):
     """Takes a _Line object and computes two tapers with taper_width and taper_length"""
 
-    minimum_length = (
-        30 + 2 * taper_length
-    )  # don't bother tapering waveguides beyond this length
+    minimum_length = 30 + 2 * taper_length  # don't bother tapering waveguides beyond this length
 
     P1, P2 = line.get_points()
 
@@ -511,9 +502,7 @@ def layout_waveguide_from_points(
 
     # Taper path if necessary
     if taper_width is not None and taper_length is not None:
-        waveguide_path = compute_tapered_path(
-            rounded_path, width, taper_width, taper_length
-        )
+        waveguide_path = compute_tapered_path(rounded_path, width, taper_width, taper_length)
     else:
         waveguide_path = compute_untapered_path(rounded_path, width)
 
@@ -623,9 +612,7 @@ def main():
     # Tapered
     origin = 40 * ex + 40 * ey
     points_ = [origin + point for point in points]
-    layout_waveguide_from_points(
-        TOP, layer, points_, 0.5, 5, taper_width=3, taper_length=10
-    )
+    layout_waveguide_from_points(TOP, layer, points_, 0.5, 5, taper_width=3, taper_length=10)
 
     print("Wrote waveguide_rounding.gds")
     TOP.write("waveguide_rounding.gds")

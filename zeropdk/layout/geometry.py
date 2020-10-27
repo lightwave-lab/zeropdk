@@ -57,9 +57,7 @@ def project(v, ex, ey=None):
         ey = rotate90(ex)
 
     if cross_prod(ex, ey) == 0:
-        raise RuntimeError(
-            "ex={} and ey={} are not orthogonal.".format(repr(ex), repr(ey))
-        )
+        raise RuntimeError("ex={} and ey={} are not orthogonal.".format(repr(ex), repr(ey)))
 
     # Simple formula
     # https://math.stackexchange.com/questions/148199/equation-for-non-orthogonal-projection-of-a-point-onto-two-vectors-representing
@@ -174,10 +172,7 @@ def cluster_ports(ports_from, ports_to, ex):
             # if the ports are too spaced apart, initiate new cluster
             right_port = min(port_from, port_to, key=proj_ex)
             left_port = max(port_cluster[-1], key=proj_ex)
-            if (
-                proj_ex(right_port) - right_port.width
-                > proj_ex(left_port) + left_port.width
-            ):
+            if proj_ex(right_port) - right_port.width > proj_ex(left_port) + left_port.width:
                 new_cluster = True
             else:
                 port_cluster.append((port_from, port_to))
@@ -231,9 +226,7 @@ def curvature_bezier(P0, P1, P2, P3):
     dy = lambda t: b_prime(t).y
     ddx = lambda t: b_second(t).x
     ddy = lambda t: b_second(t).y
-    curv_func = lambda t: (dx(t) * ddy(t) - dy(t) * ddx(t)) / (
-        dx(t) ** 2 + dy(t) ** 2
-    ) ** (3 / 2)
+    curv_func = lambda t: (dx(t) * ddy(t) - dy(t) * ddx(t)) / (dx(t) ** 2 + dy(t) ** 2) ** (3 / 2)
     return curv_func
 
 
@@ -367,9 +360,7 @@ def _bezier_optimal(angle0, angle3, *, return_result=False):
 
         # Only for potentially crossing P0-P1, P1-P2 segments (prevents loops)
         if cross:
-            constraint_penalty -= np.log(
-                np.maximum(1e-3, np.minimum(a_max - a, b_max - b))
-            )
+            constraint_penalty -= np.log(np.maximum(1e-3, np.minimum(a_max - a, b_max - b)))
         else:
             constraint_penalty += np.exp((a - a_max) / 0.05)
             constraint_penalty += np.exp((b - b_max) / 0.05)
@@ -415,10 +406,7 @@ def _bezier_optimal(angle0, angle3, *, return_result=False):
     if result.success:
         a, b = result.x[0], result.x[1]
     else:
-        if (
-            result.message
-            == "Maximum number of function evaluations has been exceeded."
-        ):
+        if result.message == "Maximum number of function evaluations has been exceeded.":
             a, b = result.x[0], result.x[1]
         else:
             print(f"Could not optimize. Exited with message:{result.message}")
@@ -492,9 +480,7 @@ def bezier_optimal(P0, P3, angle0, angle3):
             # print("Total length: {:.3f} um".format(curve_length(curve_func, 0, 1)))
         return curve_func
     else:
-        raise RuntimeError(
-            f"Error: calling bezier between two identical points: {P0}, {P3}"
-        )
+        raise RuntimeError(f"Error: calling bezier between two identical points: {P0}, {P3}")
 
 
 # Allow us to use these functions directly with pya.DPoints
@@ -514,9 +500,7 @@ try:
         # This function returns a np.array of Points.
         # We need to convert to array of Point coordinates
         new_bezier_line = _bezier_optimal_pure(P0, P3, *args, **kwargs)
-        bezier_point_coordinates = lambda t: np.array(
-            [new_bezier_line(t).x, new_bezier_line(t).y]
-        )
+        bezier_point_coordinates = lambda t: np.array([new_bezier_line(t).x, new_bezier_line(t).y])
 
         t_sampled, bezier_point_coordinates_sampled = sample_function(
             bezier_point_coordinates, [0, 1], tol=0.005 / scale

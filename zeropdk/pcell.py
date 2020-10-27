@@ -437,9 +437,7 @@ class PCell:
 
         return self.draw(new_cell)
 
-    def place_cell(
-        self, parent_cell, placement_origin, relative_to=None, transform_into=False
-    ):
+    def place_cell(self, parent_cell, placement_origin, relative_to=None, transform_into=False):
         """Places this pcell into parent_cell and return ports with
             updated position and orientation.
         Args:
@@ -545,7 +543,5 @@ def port_to_pin_helper(ports_list, cell, layerPinRec):
             ).to_itype(dbu)
         )
         cell.shapes(layerPinRec).insert(
-            kdb.Text(
-                port.name, kdb.Trans(kdb.Trans.R0, port_position_i.x, port_position_i.y)
-            )
+            kdb.Text(port.name, kdb.Trans(kdb.Trans.R0, port_position_i.x, port_position_i.y))
         ).text_size = (2 / dbu)

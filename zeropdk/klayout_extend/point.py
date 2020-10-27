@@ -25,9 +25,7 @@ def pyaPoint__rmul__(self, factor):
     """ This implements factor * P """
     if isinstance(factor, Number):
         return self.__class__(self.x * factor, self.y * factor)
-    elif MODULE_NUMPY and isinstance(
-        factor, np.ndarray
-    ):  # ideally this is never called
+    elif MODULE_NUMPY and isinstance(factor, np.ndarray):  # ideally this is never called
         return factor.__mul__(self)
     else:
         return NotImplemented
@@ -37,9 +35,7 @@ def pyaPoint__mul__(self, factor):
     """ This implements P * factor """
     if isinstance(factor, Number):
         return self.__class__(self.x * factor, self.y * factor)
-    elif MODULE_NUMPY and isinstance(
-        factor, np.ndarray
-    ):  # Numpy can multiply any object
+    elif MODULE_NUMPY and isinstance(factor, np.ndarray):  # Numpy can multiply any object
         return factor.__mul__(self)
     elif isinstance(factor, PointLike):
         return self.x * factor.x + self.y * factor.y

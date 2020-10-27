@@ -47,9 +47,7 @@ def rectangle(center, width, height, ex, ey):
     """
 
     if cross_prod(ex, ey) == 0:
-        raise RuntimeError(
-            "ex={} and ey={} are not orthogonal.".format(repr(ex), repr(ey))
-        )
+        raise RuntimeError("ex={} and ey={} are not orthogonal.".format(repr(ex), repr(ey)))
 
     point1 = center - width / 2 * ex - height / 2 * ey
     point3 = center + width / 2 * ex + height / 2 * ey
@@ -196,9 +194,7 @@ def layout_circle(cell, layer, center, r):
     optimal sampling
     """
 
-    arc_function = lambda t: np.array(
-        [center.x + r * np.cos(t), center.y + r * np.sin(t)]
-    )
+    arc_function = lambda t: np.array([center.x + r * np.cos(t), center.y + r * np.sin(t)])
     t, coords = sample_function(arc_function, [0, 2 * np.pi - 0.001], tol=0.002 / r)
 
     # dbu = cell.layout().dbu
@@ -222,16 +218,12 @@ def layout_donut(cell, layer, center, r1, r2):
 
     assert r2 > r1
 
-    arc_function = lambda t: np.array(
-        [center.x + r2 * np.cos(t), center.y + r2 * np.sin(t)]
-    )
+    arc_function = lambda t: np.array([center.x + r2 * np.cos(t), center.y + r2 * np.sin(t)])
     t, coords = sample_function(arc_function, [0, 2 * np.pi - 0.001], tol=0.002 / r2)
 
     external_points = [pya.DPoint(x, y) for x, y in zip(*coords)]
 
-    arc_function = lambda t: np.array(
-        [center.x + r1 * np.cos(-t), center.y + r1 * np.sin(-t)]
-    )
+    arc_function = lambda t: np.array([center.x + r1 * np.cos(-t), center.y + r1 * np.sin(-t)])
     t, coords = sample_function(arc_function, [0, 2 * np.pi - 0.001], tol=0.002 / r1)
 
     internal_points = [pya.DPoint(x, y) for x, y in zip(*coords)]
@@ -433,8 +425,6 @@ def layout_arc2_with_drc_exclude(
     cell, layer, drc_layer, center, r1, r2, theta_start, theta_end, ex=None, **kwargs
 ):
     """ Layout arc2 with drc exclude squares on sharp corners"""
-    dpoly = layout_arc2(
-        cell, layer, center, r1, r2, theta_start, theta_end, ex, **kwargs
-    )
+    dpoly = layout_arc2(cell, layer, center, r1, r2, theta_start, theta_end, ex, **kwargs)
     dpoly.layout_drc_exclude(cell, drc_layer, ex)
     return dpoly

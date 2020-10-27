@@ -207,13 +207,9 @@ def compute_paths_from_clusters(
         ), "There must be a line dividing the top and bottom port rows. Maybe you are using the wrong ex argument?"
 
         if is_to_top:
-            offset_port_from = max(
-                [port_from.position * ey for port_from, _ in ports_iterator]
-            )
+            offset_port_from = max([port_from.position * ey for port_from, _ in ports_iterator])
         else:
-            offset_port_from = min(
-                [port_from.position * ey for port_from, _ in ports_iterator]
-            )
+            offset_port_from = min([port_from.position * ey for port_from, _ in ports_iterator])
 
         for port_from, port_to in ports_iterator:
 
@@ -243,9 +239,7 @@ def compute_paths_from_clusters(
     return paths
 
 
-def bus_route_Z(
-    cell, ports_from, ports_to, ex, pitch=WAVEGUIDE_RADIUS, radius=WAVEGUIDE_RADIUS
-):
+def bus_route_Z(cell, ports_from, ports_to, ex, pitch=WAVEGUIDE_RADIUS, radius=WAVEGUIDE_RADIUS):
     port_clusters = cluster_ports(ports_from, ports_to, ex)
     paths = compute_paths_from_clusters(port_clusters, None, ex, pitch)
 
@@ -254,9 +248,7 @@ def bus_route_Z(
         layout_ebeam_waveguide_from_points(cell, path, radius)
 
 
-def append_Z_trace_vertical(
-    path, new_point, height, ex, middle_layer=None, middle_taper=False
-):
+def append_Z_trace_vertical(path, new_point, height, ex, middle_layer=None, middle_taper=False):
     """Adds new_point to the path list plus TWO Z or S manhattan interesections.
     Args:
         path: list of tuples containing necessary info (pya.DPoint, layer, width)
@@ -352,9 +344,7 @@ def layout_connect_ports(cell, layer, port_from, port_to, smooth=True):
         for point in curve:
             print(point)
         print(f"bezier_optimal({P0}, {P3}, {angle_from}, {angle_to})")
-    return layout_waveguide(
-        cell, layer, curve, [port_from.width, port_to.width], smooth=smooth
-    )
+    return layout_waveguide(cell, layer, curve, [port_from.width, port_to.width], smooth=smooth)
 
 
 def layout_connect_ports_angle(cell, layer, port_from, port_to, angle):
@@ -377,9 +367,7 @@ def layout_connect_ports_angle(cell, layer, port_from, port_to, angle):
         P3 = port_to.position
         curve = bezier_optimal(P0, P3, angle, angle)
 
-    return layout_waveguide_angle(
-        cell, layer, curve, [port_from.width, port_to.width], angle
-    )
+    return layout_waveguide_angle(cell, layer, curve, [port_from.width, port_to.width], angle)
 
 
 def layout_connect_ports_angle2(cell, layer, port_from, port_to, angle_from, angle_to):

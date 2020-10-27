@@ -13,9 +13,7 @@ except ImportError:
 
 else:
 
-    def sample_function(
-        func, points, tol=0.001, min_points=8, max_level=16, sample_transform=None
-    ):
+    def sample_function(func, points, tol=0.001, min_points=8, max_level=16, sample_transform=None):
         """
         Sample a 1D function to given tolerance by adaptive subdivision.
 

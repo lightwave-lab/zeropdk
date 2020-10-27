@@ -171,10 +171,7 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
                 points_high.append(intersect_point)
             else:
                 cos_dd = cos_angle(delta_next, delta_prev)
-                if (
-                    width * (1 - cos_dd) > dbu
-                    and fix_angle(theta_next - theta_prev) < 0
-                ):
+                if width * (1 - cos_dd) > dbu and fix_angle(theta_next - theta_prev) < 0:
                     points_high.append(backward_point_high)
                     points_high.append(forward_point_high)
                 else:
@@ -189,10 +186,7 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
                 points_low.append(intersect_point)
             else:
                 cos_dd = cos_angle(delta_next, delta_prev)
-                if (
-                    width * (1 - cos_dd) > dbu
-                    and fix_angle(theta_next - theta_prev) > 0
-                ):
+                if width * (1 - cos_dd) > dbu and fix_angle(theta_next - theta_prev) > 0:
                     points_low.append(backward_point_low)
                     points_low.append(forward_point_low)
                 else:
@@ -362,13 +356,9 @@ def layout_waveguide_angle2(cell, layer, points_list, width, angle_from, angle_t
         angle = angle_list[i]
         theta = angle * pi / 180
 
-        point_high = point + 0.5 * width * pya.DPoint(
-            cos(theta + pi / 2), sin(theta + pi / 2)
-        )
+        point_high = point + 0.5 * width * pya.DPoint(cos(theta + pi / 2), sin(theta + pi / 2))
         points_high.append(point_high)
-        point_low = point + 0.5 * width * pya.DPoint(
-            cos(theta - pi / 2), sin(theta - pi / 2)
-        )
+        point_low = point + 0.5 * width * pya.DPoint(cos(theta - pi / 2), sin(theta - pi / 2))
         points_low.append(point_low)
 
     polygon_points = points_high + list(reversed(points_low))
