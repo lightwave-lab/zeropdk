@@ -1,8 +1,9 @@
+from typing import Type
 from klayout.db import Layout
 
 
-def layout_read_cell(layout, cell_name, filepath):
-    """ Imports a cell from a file into current layout.
+def layout_read_cell(layout: Type[Layout], cell_name: str, filepath: str):
+    """Imports a cell from a file into current layout.
 
     layout [pya.Layout]: layout to insert cell into
     cell_name [str]: cell name from the file in filepath

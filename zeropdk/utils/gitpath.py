@@ -41,7 +41,7 @@ def root():
 
 
 def abspath(relpath):
-    """ returns the absolute path for a path given relative to the root of
+    """returns the absolute path for a path given relative to the root of
     the git repository
     """
     return os.path.join(root(), relpath)

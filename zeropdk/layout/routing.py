@@ -1,26 +1,21 @@
-import pya
-import os
-import sys
+""" Module containing routines for routing optical and metal waveguides."""
+
 import logging
-from contextlib import contextmanager
+import math
+import numpy as np
+import pya
+from zeropdk.layout.geometry import bezier_optimal
+
 
 # from siepic_ebeam_pdk import EBEAM_TECH
 from zeropdk.layout.geometry import rotate90, manhattan_intersection, cluster_ports
-from zeropdk.layout.waveguides import layout_waveguide, layout_waveguide_angle, layout_waveguide_angle2
+from zeropdk.layout.waveguides import (
+    layout_waveguide,
+    layout_waveguide_angle,
+    layout_waveguide_angle2,
+)
 
-logger = logging.getLogger()
-
-
-@contextmanager
-def suppress_stdout():
-    with open(os.devnull, "w") as devnull:
-        old_stdout = sys.stdout
-        sys.stdout = devnull
-        try:
-            yield
-        finally:
-            sys.stdout = old_stdout
-
+logger = logging.getLogger(__name__)
 
 WAVEGUIDE_RADIUS = 10
 WAVEGUIDE_WIDTH = 0.5
@@ -28,13 +23,12 @@ TAPER_WIDTH = 3
 TAPER_LENGTH = 20
 
 
-# The function below is an reference. You need to provide an EBEAM_TECH
+# The function below is just a reference. You need to provide an EBEAM_TECH
 # or replace the layer in the call to layout_waveguide_from_points
 def layout_ebeam_waveguide_from_points(
     cell, points_list, radius=None, width=None, taper_width=None, taper_length=None
 ):
-    """ Takes a list of points and lays out a rounded waveguide with optional tapers
-    """
+    """Takes a list of points and lays out a rounded waveguide with optional tapers"""
 
     TECHNOLOGY = EBEAM_TECH
     if radius is None:
@@ -68,26 +62,25 @@ def ensure_layer(layout, layer):
         return layer
     else:
         logger.error(f"{layer} not recognized")
-        return
 
 
 def common_layout_manhattan_traces(
     cell, layer1, layer2, layervia, via_cell_placer, path, ex, initiate_with_via=False
 ):
-    """ Lays out a manhattan trace, potentially with vias
+    """Lays out a manhattan trace, potentially with vias
 
-        Args:
-            layer1 and layer2 are given to layout.LayerInfo(layer), generally
-                layer2 is on top
-            via_cell_placer: returns a cell when called with
-                via_cell_placer(parent_cell, pya.DPoint origin, width, layer1, layer2, layervia, ex)
-            path: list of tuples containing necessary info ((x, y) or pya.DPoint, layer, width)
+    Args:
+        layer1 and layer2 are given to layout.LayerInfo(layer), generally
+            layer2 is on top
+        via_cell_placer: returns a cell when called with
+            via_cell_placer(parent_cell, pya.DPoint origin, width, layer1, layer2, layervia, ex)
+        path: list of tuples containing necessary info ((x, y) or pya.DPoint, layer, width)
 
-        Returns:
-            path
+    Returns:
+        path
 
-        Algorithm places a via when there is a change of layers. To terminate with a via,
-        have the last layer be different than the penultimate one.
+    Algorithm places a via when there is a change of layers. To terminate with a via,
+    have the last layer be different than the penultimate one.
     """
 
     assert isinstance(ex, (pya.DPoint, pya.DVector))
@@ -213,16 +206,12 @@ def compute_paths_from_clusters(
 
         assert not (
             is_to_bottom and is_to_top
-        ), "there must be a line dividing the top and bottom port rows"
+        ), "There must be a line dividing the top and bottom port rows. Maybe you are using the wrong ex argument?"
 
         if is_to_top:
-            offset_port_from = max(
-                [port_from.position * ey for port_from, _ in ports_iterator]
-            )
+            offset_port_from = max([port_from.position * ey for port_from, _ in ports_iterator])
         else:
-            offset_port_from = min(
-                [port_from.position * ey for port_from, _ in ports_iterator]
-            )
+            offset_port_from = min([port_from.position * ey for port_from, _ in ports_iterator])
 
         for port_from, port_to in ports_iterator:
 
@@ -252,9 +241,7 @@ def compute_paths_from_clusters(
     return paths
 
 
-def bus_route_Z(
-    cell, ports_from, ports_to, ex, pitch=WAVEGUIDE_RADIUS, radius=WAVEGUIDE_RADIUS
-):
+def bus_route_Z(cell, ports_from, ports_to, ex, pitch=WAVEGUIDE_RADIUS, radius=WAVEGUIDE_RADIUS):
     port_clusters = cluster_ports(ports_from, ports_to, ex)
     paths = compute_paths_from_clusters(port_clusters, None, ex, pitch)
 
@@ -263,10 +250,8 @@ def bus_route_Z(
         layout_ebeam_waveguide_from_points(cell, path, radius)
 
 
-def append_Z_trace_vertical(
-    path, new_point, height, ex, middle_layer=None, middle_taper=False
-):
-    """ Adds new_point to the path list plus TWO Z or S manhattan interesections.
+def append_Z_trace_vertical(path, new_point, height, ex, middle_layer=None, middle_taper=False):
+    """Adds new_point to the path list plus TWO Z or S manhattan interesections.
     Args:
         path: list of tuples containing necessary info (pya.DPoint, layer, width)
         new_point: tuple ((x, y) or pya.DPoint, layer, width)
@@ -333,18 +318,8 @@ def append_Z_trace_vertical(
     return path
 
 
-# TODO: Reorganize
-import numpy as np
-
-debug = False
-
-from zeropdk.layout.geometry import bezier_optimal
-from math import pi
-
-
 def layout_connect_ports(cell, layer, port_from, port_to, smooth=True):
-    """ Places an "optimal" bezier curve from port_from to port_to.
-    """
+    """Places an "optimal" bezier curve from port_from to port_to."""
 
     if port_from.name.startswith("el"):
         assert port_to.name.startswith("el")
@@ -356,21 +331,16 @@ def layout_connect_ports(cell, layer, port_from, port_to, smooth=True):
         P0 = port_from.position - dbu * port_from.direction
         P3 = port_to.position - dbu * port_to.direction
         smooth = smooth or True
-    angle_from = np.arctan2(port_from.direction.y, port_from.direction.x) * 180 / pi
-    angle_to = np.arctan2(-port_to.direction.y, -port_to.direction.x) * 180 / pi
+    angle_from = np.arctan2(port_from.direction.y, port_from.direction.x) * 180 / math.pi
+    angle_to = np.arctan2(-port_to.direction.y, -port_to.direction.x) * 180 / math.pi
 
     curve = bezier_optimal(P0, P3, angle_from, angle_to)
-    if debug:
-        for point in curve:
-            print(point)
-        print(f"bezier_optimal({P0}, {P3}, {angle_from}, {angle_to})")
-    return layout_waveguide(
-        cell, layer, curve, [port_from.width, port_to.width], smooth=smooth
-    )
+    logger.debug(f"bezier_optimal({P0}, {P3}, {angle_from}, {angle_to})")
+    return layout_waveguide(cell, layer, curve, [port_from.width, port_to.width], smooth=smooth)
 
 
 def layout_connect_ports_angle(cell, layer, port_from, port_to, angle):
-    """ Places an "optimal" bezier curve from port_from to port_to, with a fixed orientation angle.
+    """Places an "optimal" bezier curve from port_from to port_to, with a fixed orientation angle.
 
     Args:
         angle: degrees
@@ -389,13 +359,11 @@ def layout_connect_ports_angle(cell, layer, port_from, port_to, angle):
         P3 = port_to.position
         curve = bezier_optimal(P0, P3, angle, angle)
 
-    return layout_waveguide_angle(
-        cell, layer, curve, [port_from.width, port_to.width], angle
-    )
+    return layout_waveguide_angle(cell, layer, curve, [port_from.width, port_to.width], angle)
 
 
 def layout_connect_ports_angle2(cell, layer, port_from, port_to, angle_from, angle_to):
-    """ Places an "optimal" bezier curve from port_from to port_to, with a fixed orientation angle.
+    """Places an "optimal" bezier curve from port_from to port_to, with a fixed orientation angle.
 
     Args:
         angle: degrees
@@ -420,11 +388,11 @@ def layout_connect_ports_angle2(cell, layer, port_from, port_to, angle_from, ang
 
 
 def append_L_trace(path, new_point, middle_layer, ex):
-    """ Adds new_point to the path list plus ONE L manhattan intersection.
+    """Adds new_point to the path list plus ONE L manhattan intersection.
 
-        Args:
-            path: list of tuples containing necessary info ((x, y) or pya.DPoint, layer, width)
-            new_point: tuple ((x, y) or pya.DPoint, layer, width)
+    Args:
+        path: list of tuples containing necessary info ((x, y) or pya.DPoint, layer, width)
+        new_point: tuple ((x, y) or pya.DPoint, layer, width)
     """
 
     assert len(path) > 0

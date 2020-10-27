@@ -1,12 +1,15 @@
+"""PCell definitions that improve upon Klayout pcells."""
+
 import os
 from copy import copy, deepcopy
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Tuple, Any, Type, Optional
 import logging
 from collections.abc import Mapping, MutableMapping
 
 import klayout.db as kdb
+from zeropdk.layout.geometry import rotate90
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 TypeDouble = float
 TypeInt = int
@@ -86,7 +89,7 @@ class PCellParameter:
 
         try:
             return self.type(value)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError) as parse_exception:
             raise TypeError(
                 "Cannot set '{name}' to {value}. "
                 "Expected {etype}, got {type}.".format(
@@ -95,15 +98,15 @@ class PCellParameter:
                     etype=repr(self.type.__qualname__),
                     type=repr(type(value).__qualname__),
                 )
-            )
+            ) from parse_exception
 
 
 class objectview(MutableMapping):
-    """ Basically allows us to access dictionary values as dict.x
-        rather than dict['x']
+    """Basically allows us to access dictionary values as dict.x
+    rather than dict['x']
 
-        The fact that it is a MutableMapping means that it is essentially
-        a writable dictionary. We recommend you only use it as read-only.
+    The fact that it is a MutableMapping means that it is essentially
+    a writable dictionary. We recommend you only use it as read-only.
 
     """
 
@@ -148,7 +151,7 @@ class objectview(MutableMapping):
 # https://stackoverflow.com/questions/3387691/how-to-perfectly-override-a-dict
 # Mapping is an abstract class which implements a read-only dict
 class ParamContainer(Mapping):
-    """ Holds a dictionary-like set of parameters.
+    """Holds a dictionary-like set of parameters.
     The idea is to use them as such:
 
     >>> pc = ParamContainer()
@@ -162,14 +165,14 @@ class ParamContainer(Mapping):
     TypeError: Cannot set orange to string
     """
 
-    _container = None
-    _current_values = None
+    _container: Dict[str, Type[PCellParameter]]
+    _current_values: Dict[str, Type[PCellParameter]]
 
     def __init__(self, *args):
-        """ Two ways of initializing:
-            1. ParamContainer(pc_obj), where pc_obj is another param_container
-            2. ParamContainer(param1, param2, param3, ...), where param is of type
-                PCellParameter
+        """Two ways of initializing:
+        1. ParamContainer(pc_obj), where pc_obj is another param_container
+        2. ParamContainer(param1, param2, param3, ...), where param is of type
+            PCellParameter
         """
         self._container = dict()
         self._current_values = dict()
@@ -183,7 +186,7 @@ class ParamContainer(Mapping):
                 param = arg  # TODO: check type
                 self.add_param(param)
 
-    def add_param(self, param: PCellParameter):
+    def add_param(self, param: Type[PCellParameter]):
         self._container[param.name] = param
 
         # delete from current values if overwriting parameter
@@ -244,12 +247,12 @@ class Port(object):
 
     def __init__(self, name, position, direction, width, port_type=None):
         self.name: str = name
-        self.position = position  # Point
-        self.direction = direction  # Vector
+        self.position: Type[kdb.DPoint] = position  # Point
+        self.direction: Type[kdb.DVector] = direction  # Vector
         self.type: str = port_type
         self.width: float = width
 
-    def rename(self, new_name):
+    def rename(self, new_name: str):
         self.name = new_name
         return self
 
@@ -257,7 +260,6 @@ class Port(object):
         return f"({self.name}, {self.position})"
 
     def flip(self):
-
         # TODO refactor after introducing port type
         if self.name.startswith("el"):
             pin_length = self.width
@@ -295,7 +297,6 @@ class Port(object):
         cell.shapes(layer).insert(port_path)
 
         # Place a small arrow around the tip of the port
-        from zeropdk.layout.geometry import rotate90
 
         ey = rotate90(ex)
         port_tip = kdb.DSimplePolygon(
@@ -324,14 +325,14 @@ class Port(object):
 
 
 def place_cell(
-    parent_cell,
-    pcell,
-    ports_dict,
-    placement_origin,
-    relative_to=None,
-    transform_into=False,
+    parent_cell: Type[kdb.Cell],
+    pcell: Type[kdb.Cell],
+    ports_dict: Dict[str, Type[Port]],
+    placement_origin: Type[kdb.DPoint],
+    relative_to: Optional[str] = None,
+    transform_into: bool = False,
 ):
-    """ Places an pya cell and return ports with updated positions
+    """Places an pya cell and return ports with updated positions
     Args:
         parent_cell: cell to place into
         pcell, ports_dict: result of KLayoutPCell.pcell call
@@ -371,13 +372,14 @@ def place_cell(
 
 
 class PCell:
+    """Programmable Cell whose layout is computed depending on given parameters."""
 
     # It is useful to define params and ports during class definition.
     # This way, inherited classes can inherit (and merge) these
     # properties. The logic for this can be found in __new__ method
     # below
     params: ParamContainer = ParamContainer()
-    _cell: kdb.Cell = None
+    _cell: Type[kdb.Cell]
 
     def draw(self, cell):
         raise NotImplementedError()
@@ -423,11 +425,11 @@ class PCell:
                 )
 
     def get_cell_params(self):
-        """ returns a *copy* of the parameter dictionary
+        """returns a *copy* of the parameter dictionary
 
-            Returns:
-                object: objectview of full parameter structure
-                access with cp.name instead of cp['name']
+        Returns:
+            object: objectview of full parameter structure
+            access with cp.name instead of cp['name']
         """
         cell_params = dict(self.params)
         return objectview(cell_params)
@@ -438,9 +440,13 @@ class PCell:
         return self.draw(new_cell)
 
     def place_cell(
-        self, parent_cell, placement_origin, relative_to=None, transform_into=False
+        self,
+        parent_cell: Type[kdb.Cell],
+        placement_origin: Type[kdb.DPoint],
+        relative_to: Optional[str] = None,
+        transform_into: bool = False,
     ):
-        """ Places this pcell into parent_cell and return ports with
+        """Places this pcell into parent_cell and return ports with
             updated position and orientation.
         Args:
             parent_cell: cell to place into
@@ -470,15 +476,15 @@ class PCell:
         )
 
 
-def GDSCell(cell_name, filename, gds_dir):
+def GDSCell(cell_name: str, filename: str, gds_dir: str):
     """
-        Args:
-            cell_name: cell within that file.
-            filename: is the gds file name.
-            gds_dir: where to look for file
+    Args:
+        cell_name: cell within that file.
+        filename: is the gds file name.
+        gds_dir: where to look for file
 
-        Returns:
-            (class) a GDS_cell_base class that can be inherited
+    Returns:
+        (class) a GDS_cell_base class that can be inherited
     """
 
     assert gds_dir is not None
@@ -521,7 +527,9 @@ def GDSCell(cell_name, filename, gds_dir):
     return GDS_cell_base
 
 
-def port_to_pin_helper(ports_list, cell, layerPinRec):
+def port_to_pin_helper(
+    ports_list: List[Type[Port]], cell: Type[kdb.Cell], layerPinRec: Type[kdb.LayerInfo]
+):
     """ Draws port shapes for visual help in KLayout. """
     # Create the pins, as short paths:
     # from siepic_tools.config import PIN_LENGTH
@@ -545,7 +553,5 @@ def port_to_pin_helper(ports_list, cell, layerPinRec):
             ).to_itype(dbu)
         )
         cell.shapes(layerPinRec).insert(
-            kdb.Text(
-                port.name, kdb.Trans(kdb.Trans.R0, port_position_i.x, port_position_i.y)
-            )
+            kdb.Text(port.name, kdb.Trans(kdb.Trans.R0, port_position_i.x, port_position_i.y))
         ).text_size = (2 / dbu)

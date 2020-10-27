@@ -1,1 +1,2 @@
 include zeropdk/layout/*.npz
+include version.py

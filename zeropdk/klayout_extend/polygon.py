@@ -1,5 +1,5 @@
-import klayout.db as kdb
 import pya
+import klayout.db as kdb
 from zeropdk import klayout_extend  # noqa
 
 import numpy as np
@@ -9,17 +9,17 @@ from zeropdk.layout.geometry import rotate90, rotate
 
 def patch_simple_polygon(backend):
     class _SimplePolygon(backend.DSimplePolygon):
-        """ SimplePolygon with some added functionalities:
-                - transform_and_rotate
-                - clip
-                - layout
-                - layout_drc_exclude
-                - resize
-                - round_corners
+        """SimplePolygon with some added functionalities:
+        - transform_and_rotate
+        - clip
+        - layout
+        - layout_drc_exclude
+        - resize
+        - round_corners
         """
 
         def transform_and_rotate(self, center, ex=None):
-            """ Translates the polygon by 'center' and rotates by the 'ex' orientation.
+            """Translates the polygon by 'center' and rotates by the 'ex' orientation.
 
             Example: if current polygon is a unit square with bottom-left corner at (0,0),
             then square.transform_and_rotate(DPoint(0, 1), DVector(0, 1)) will
@@ -30,14 +30,12 @@ def patch_simple_polygon(backend):
                 ex = backend.DPoint(1, 0)
             ey = rotate90(ex)
 
-            polygon_dpoints_transformed = [
-                center + p.x * ex + p.y * ey for p in self.each_point()
-            ]
+            polygon_dpoints_transformed = [center + p.x * ex + p.y * ey for p in self.each_point()]
             self.assign(_SimplePolygon(polygon_dpoints_transformed))
             return self
 
         def clip(self, x_bounds=(-np.inf, np.inf), y_bounds=(-np.inf, np.inf)):
-            """ Clips the polygon at four possible boundaries.
+            """Clips the polygon at four possible boundaries.
             The boundaries are tuples based on absolute coordinates and cartesian axes.
             This method is very powerful when used with transform_and_rotate.
             """
@@ -65,9 +63,7 @@ def patch_simple_polygon(backend):
                             [left_most.y, right_most.y],
                         )
                         if y_bounds[0] < y_intersect and y_bounds[1] > y_intersect:
-                            return backend.DPoint(
-                                float(x_bounds[0]), float(y_intersect)
-                            )
+                            return backend.DPoint(float(x_bounds[0]), float(y_intersect))
                 return None
 
             def intersect(p1, p2, x_bounds, y_bounds):
@@ -163,7 +159,7 @@ def patch_simple_polygon(backend):
             return insert_shape(cell, layer, self)
 
         def layout_drc_exclude(self, cell, drclayer, ex):
-            """ Places a drc exclude square at every corner.
+            """Places a drc exclude square at every corner.
             A corner is defined by an outer angle greater than 85 degrees (conservative)
             """
             from zeropdk.layout.polygons import layout_square
@@ -187,7 +183,7 @@ def patch_simple_polygon(backend):
                     prev_delta, prev_angle = delta, angle
 
         def resize(self, dx, dbu):
-            """ Resizes the polygon by a positive or negative quantity dx.
+            """Resizes the polygon by a positive or negative quantity dx.
             Args:
                 dbu: typically 0.001
             """
@@ -196,9 +192,7 @@ def patch_simple_polygon(backend):
 
             dpoly = backend.DPolygon(self)
             dpoly.size(dx, 5)
-            dpoly = backend.EdgeProcessor().simple_merge_p2p(
-                [dpoly.to_itype(dbu)], False, False, 1
-            )
+            dpoly = backend.EdgeProcessor().simple_merge_p2p([dpoly.to_itype(dbu)], False, False, 1)
             dpoly = dpoly[0].to_dtype(dbu)  # backend.DPolygon
 
             def norm(p):

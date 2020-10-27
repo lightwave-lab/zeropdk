@@ -5,7 +5,7 @@ import klayout.db as kdb
 
 
 def box(point1, point3, ex, ey):
-    """ Returns a polygon of a box defined by point1, point3 and orientation ex.
+    """Returns a polygon of a box defined by point1, point3 and orientation ex.
     p2 ----- p3
     |        |
     p1 ----- p4
@@ -19,7 +19,7 @@ def box(point1, point3, ex, ey):
 
 
 def layout_box(cell, layer, point1, point3, ex):
-    """ Lays out a box
+    """Lays out a box
 
     Args:
         point1: bottom-left point
@@ -47,9 +47,7 @@ def rectangle(center, width, height, ex, ey):
     """
 
     if cross_prod(ex, ey) == 0:
-        raise RuntimeError(
-            "ex={} and ey={} are not orthogonal.".format(repr(ex), repr(ey))
-        )
+        raise RuntimeError("ex={} and ey={} are not orthogonal.".format(repr(ex), repr(ey)))
 
     point1 = center - width / 2 * ex - height / 2 * ey
     point3 = center + width / 2 * ex + height / 2 * ey
@@ -71,7 +69,7 @@ def square(center, width, ex, ey):
 
 
 def layout_square(cell, layer, center, width, ex=None):
-    """ Lays out a square in a layer
+    """Lays out a square in a layer
 
     Args:
         center: pya.DPoint (um units)
@@ -90,7 +88,7 @@ def layout_square(cell, layer, center, width, ex=None):
 
 
 def layout_rectangle(cell, layer, center, width, height, ex):
-    """ Lays out a rectangle
+    """Lays out a rectangle
 
     Args:
         center: pya.DPoint (um units)
@@ -126,9 +124,9 @@ def layout_path_with_ends(cell, layer, point_iterator, w):
 
 
 def append_relative(points, *relative_vectors):
-    """ Appends to list of points in relative steps:
-        It takes a list of points, and adds new points to it in relative coordinates.
-        For example, if you call append_relative([A, B], C, D), the result will be [A, B, B+C, B+C+D].
+    """Appends to list of points in relative steps:
+    It takes a list of points, and adds new points to it in relative coordinates.
+    For example, if you call append_relative([A, B], C, D), the result will be [A, B, B+C, B+C+D].
     """
     try:
         if len(points) > 0:
@@ -196,9 +194,7 @@ def layout_circle(cell, layer, center, r):
     optimal sampling
     """
 
-    arc_function = lambda t: np.array(
-        [center.x + r * np.cos(t), center.y + r * np.sin(t)]
-    )
+    arc_function = lambda t: np.array([center.x + r * np.cos(t), center.y + r * np.sin(t)])
     t, coords = sample_function(arc_function, [0, 2 * np.pi - 0.001], tol=0.002 / r)
 
     # dbu = cell.layout().dbu
@@ -212,7 +208,7 @@ layout_disk = layout_circle
 
 
 def layout_donut(cell, layer, center, r1, r2):
-    """ Layout donut shape.
+    """Layout donut shape.
     cell: layout cell to place the layout
     layer: which layer to use
     center: origin DPoint (not affected by ex)
@@ -222,16 +218,12 @@ def layout_donut(cell, layer, center, r1, r2):
 
     assert r2 > r1
 
-    arc_function = lambda t: np.array(
-        [center.x + r2 * np.cos(t), center.y + r2 * np.sin(t)]
-    )
+    arc_function = lambda t: np.array([center.x + r2 * np.cos(t), center.y + r2 * np.sin(t)])
     t, coords = sample_function(arc_function, [0, 2 * np.pi - 0.001], tol=0.002 / r2)
 
     external_points = [pya.DPoint(x, y) for x, y in zip(*coords)]
 
-    arc_function = lambda t: np.array(
-        [center.x + r1 * np.cos(-t), center.y + r1 * np.sin(-t)]
-    )
+    arc_function = lambda t: np.array([center.x + r1 * np.cos(-t), center.y + r1 * np.sin(-t)])
     t, coords = sample_function(arc_function, [0, 2 * np.pi - 0.001], tol=0.002 / r1)
 
     internal_points = [pya.DPoint(x, y) for x, y in zip(*coords)]
@@ -253,7 +245,7 @@ def layout_section(
     x_bounds=(-np.inf, np.inf),
     y_bounds=(-np.inf, np.inf),
 ):
-    """ Layout section of a circle.
+    """Layout section of a circle.
     cell: layout cell to place the layout
     layer: which layer to use
     center: origin DPoint (not affected by ex)
@@ -306,7 +298,7 @@ def layout_arc(
     x_bounds=(-np.inf, np.inf),
     y_bounds=(-np.inf, np.inf),
 ):
-    """ function to produce the layout of an arc
+    """function to produce the layout of an arc
     cell: layout cell to place the layout
     layer: which layer to use
     center: origin DPoint (not affected by ex)
@@ -358,6 +350,7 @@ def layout_arc(
     dpolygon.layout(cell, layer)
     return dpolygon
 
+
 def layout_arc_degree(
     cell,
     layer,
@@ -370,12 +363,22 @@ def layout_arc_degree(
     x_bounds=(-np.inf, np.inf),
     y_bounds=(-np.inf, np.inf),
 ):
-    """ same as layout_arc, but with theta in degrees instead of radians
-    """
+    """same as layout_arc, but with theta in degrees instead of radians"""
 
     theta_start *= np.pi / 180
     theta_end *= np.pi / 180
-    return layout_arc(cell, layer, center, r, w, theta_start, theta_end, ex=ex, x_bounds=x_bounds, y_bounds=y_bounds)
+    return layout_arc(
+        cell,
+        layer,
+        center,
+        r,
+        w,
+        theta_start,
+        theta_end,
+        ex=ex,
+        x_bounds=x_bounds,
+        y_bounds=y_bounds,
+    )
 
 
 def layout_arc2(
@@ -422,8 +425,6 @@ def layout_arc2_with_drc_exclude(
     cell, layer, drc_layer, center, r1, r2, theta_start, theta_end, ex=None, **kwargs
 ):
     """ Layout arc2 with drc exclude squares on sharp corners"""
-    dpoly = layout_arc2(
-        cell, layer, center, r1, r2, theta_start, theta_end, ex, **kwargs
-    )
+    dpoly = layout_arc2(cell, layer, center, r1, r2, theta_start, theta_end, ex, **kwargs)
     dpoly.layout_drc_exclude(cell, drc_layer, ex)
     return dpoly

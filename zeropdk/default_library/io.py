@@ -49,9 +49,7 @@ pad_array_pitch = PCellParameter(
     unit="um",
 )
 
-origin = PCellParameter(
-    name="origin", type=TypePoint, description="Origin", default=DPoint(0, 0)
-)
+origin = PCellParameter(name="origin", type=TypePoint, description="Origin", default=DPoint(0, 0))
 
 ex = PCellParameter(
     name="ex", type=TypePoint, description="x-axis unit vector", default=DPoint(1, 0)
@@ -60,17 +58,13 @@ ex = PCellParameter(
 ey = PCellParameter(
     name="ey", type=TypePoint, description="y-axis unit vector", default=DPoint(0, 1)
 )
-layer_metal = PCellParameter(
-    name="layer_metal", type=TypeLayer, description="Metal Layer"
-)
+layer_metal = PCellParameter(name="layer_metal", type=TypeLayer, description="Metal Layer")
 
-layer_opening = PCellParameter(
-    name="layer_opening", type=TypeLayer, description="Open Layer"
-)
+layer_opening = PCellParameter(name="layer_opening", type=TypeLayer, description="Open Layer")
 
 
 class OrientedCell(PCell):
-    """ A standard cell that has the following parameters:
+    """A standard cell that has the following parameters:
     - origin: Point
     - ex: unit vector of x axis
     - ey: unit vector of y axis
@@ -86,14 +80,12 @@ class OrientedCell(PCell):
 
 
 class DCPad(OrientedCell):
-    """ A standard DC pad.
+    """A standard DC pad.
 
     Ports: el0
     """
 
-    params = ParamContainer(
-        pad_width, pad_height, port_width, layer_metal, layer_opening
-    )
+    params = ParamContainer(pad_width, pad_height, port_width, layer_metal, layer_opening)
 
     def draw(self, cell):
         layout = cell.layout()

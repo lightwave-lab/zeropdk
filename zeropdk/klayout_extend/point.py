@@ -5,6 +5,7 @@ klayout.db.Point Extensions:
   - P * P
   - P / number
   - P.norm()
+  - P.normalize() = P / P.norm()
 """
 from numbers import Number
 from math import sqrt
@@ -25,9 +26,7 @@ def pyaPoint__rmul__(self, factor):
     """ This implements factor * P """
     if isinstance(factor, Number):
         return self.__class__(self.x * factor, self.y * factor)
-    elif MODULE_NUMPY and isinstance(
-        factor, np.ndarray
-    ):  # ideally this is never called
+    elif MODULE_NUMPY and isinstance(factor, np.ndarray):  # ideally this is never called
         return factor.__mul__(self)
     else:
         return NotImplemented
@@ -37,9 +36,7 @@ def pyaPoint__mul__(self, factor):
     """ This implements P * factor """
     if isinstance(factor, Number):
         return self.__class__(self.x * factor, self.y * factor)
-    elif MODULE_NUMPY and isinstance(
-        factor, np.ndarray
-    ):  # Numpy can multiply any object
+    elif MODULE_NUMPY and isinstance(factor, np.ndarray):  # Numpy can multiply any object
         return factor.__mul__(self)
     elif isinstance(factor, PointLike):
         return self.x * factor.x + self.y * factor.y
@@ -71,7 +68,7 @@ def pyaPoint__init__(self, *args):
         self.x, self.y = args
     except (TypeError, ValueError):
         if len(args) == 1:
-            p, = args
+            (p,) = args
             try:
                 self.x = p.x
                 self.y = p.y
@@ -99,9 +96,3 @@ for klass in PointLike:
     klass.__setstate__ = pyaPoint__setstate__
     klass.normalize = pyaPoint_normalize
     klass.norm = pyaPoint_norm
-
-import sys
-
-if sys.version_info[0] > 2:
-    assert DPoint(1, 2) / 1.0 == DPoint(1, 2)
-    assert 0.5 * DPoint(1, 2) == DPoint(0.5, 1)
