@@ -1,4 +1,4 @@
-"""Extends kdb.Cell object by introducint or replacing with the following methods:
+"""Extends kdb.Cell object by introducing or replacing with the following methods:
 - Cell.insert_cell
 - Cell.shapes
 """
@@ -24,14 +24,24 @@ def cell_insert_cell(
 
 Cell.insert_cell = cell_insert_cell
 
-old_cell_shapes = Cell.shapes
+def override_layer(method):
+    old_method = method
+    @wraps(old_method)
+    def new_method(self: Type[Cell], layer, *args, **kwargs):
+        if isinstance(layer, (kdb.LayerInfo, str)):
+            layer_index = self.layout().layer(layer)
+        else:
+            layer_index = layer
+        return old_method(self, layer_index, *args, **kwargs)
+    return new_method
 
-
-@wraps(old_cell_shapes)
-def cell_shapes(self, layer):
-    if layer is not None and not isinstance(layer, int):
-        layer = self.layout().layer(layer)
-    return old_cell_shapes(self, layer)
-
-
-Cell.shapes = cell_shapes
+# All the methods that have layer_index as first argument
+# I would like to allow LayerInfo to be passed as parameter
+# Taken from https://www.klayout.de/doc-qt5/code/class_Cell.html
+Cell.shapes = override_layer(Cell.shapes)
+Cell.begin_shapes_rec = override_layer(Cell.begin_shapes_rec)
+Cell.bbox_per_layer = override_layer(Cell.bbox_per_layer)
+Cell.dbbox_per_layer = override_layer(Cell.dbbox_per_layer)
+Cell.each_shape = override_layer(Cell.each_shape)
+Cell.each_touching_shape = override_layer(Cell.each_touching_shape)
+Cell.each_overlapping_shape = override_layer(Cell.each_overlapping_shape)
