@@ -1,8 +1,10 @@
-import pya
+""" Module containing routines for routing optical and metal waveguides."""
+
 import os
 import sys
 import logging
 from contextlib import contextmanager
+import pya
 
 # from siepic_ebeam_pdk import EBEAM_TECH
 from zeropdk.layout.geometry import rotate90, manhattan_intersection, cluster_ports
@@ -14,25 +16,13 @@ from zeropdk.layout.waveguides import (
 
 logger = logging.getLogger()
 
-
-@contextmanager
-def suppress_stdout():
-    with open(os.devnull, "w") as devnull:
-        old_stdout = sys.stdout
-        sys.stdout = devnull
-        try:
-            yield
-        finally:
-            sys.stdout = old_stdout
-
-
 WAVEGUIDE_RADIUS = 10
 WAVEGUIDE_WIDTH = 0.5
 TAPER_WIDTH = 3
 TAPER_LENGTH = 20
 
 
-# The function below is an reference. You need to provide an EBEAM_TECH
+# The function below is just a reference. You need to provide an EBEAM_TECH
 # or replace the layer in the call to layout_waveguide_from_points
 def layout_ebeam_waveguide_from_points(
     cell, points_list, radius=None, width=None, taper_width=None, taper_length=None
@@ -70,8 +60,7 @@ def ensure_layer(layout, layer):
     elif isinstance(layer, type(1)):
         return layer
     else:
-        logger.error(f"{layer} not recognized")
-        return
+        logger.error("%s not recognized", layer)
 
 
 def common_layout_manhattan_traces(
