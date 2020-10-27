@@ -1,10 +1,9 @@
 """ Module containing routines for routing optical and metal waveguides."""
 
-import os
-import sys
 import logging
-from contextlib import contextmanager
 import pya
+import numpy as np
+
 
 # from siepic_ebeam_pdk import EBEAM_TECH
 from zeropdk.layout.geometry import rotate90, manhattan_intersection, cluster_ports
@@ -60,7 +59,7 @@ def ensure_layer(layout, layer):
     elif isinstance(layer, type(1)):
         return layer
     else:
-        logger.error("%s not recognized", layer)
+        logger.error(f"{layer} not recognized")
 
 
 def common_layout_manhattan_traces(
@@ -326,8 +325,6 @@ def append_Z_trace_vertical(
 
 
 # TODO: Reorganize
-import numpy as np
-
 debug = False
 
 from zeropdk.layout.geometry import bezier_optimal

@@ -1,18 +1,24 @@
-import klayout.db as pya
+"""Caching algorithms for pcells."""
 import os
-from hashlib import sha256
 import inspect
 import pickle
+import logging
+from hashlib import sha256
+from functools import partial, wraps
+import klayout.db as pya
+from zeropdk.pcell import PCell
 
+logger = logging.getLogger(__name__)
 layer_map_dict = dict()
-debug = False
-CACHE_ACTIVATED = True
-cache_dir = os.path.join(os.getcwd(), "cache")
-
+CACHE_ACTIVATED = os.environ.get("ZEROPDK_CACHE_ACTIVATED", "true") == "true"
+CACHE_DIR = os.environ.get("ZEROPDK_CACHE_DIR", os.path.join(os.getcwd(), "cache"))
 
 def produce_hash(self, extra=None):
-    from zeropdk.pcell import PCell
-
+    """Produces a hash of a PCell instance based on:
+        1. the source code of the class and its bases.
+        2. the non-default parameter with which the pcell method is called
+        3. the name of the pcell
+    """
     # copy source code of class and all its ancestors
     source_code = "".join(
         [
@@ -36,8 +42,8 @@ def produce_hash(self, extra=None):
 
 def read_layout(layout, gds_filename, disambiguation_name=""):
     """Reads the layout in the gds file and imports all cells into
-    layout without overwriting existing cells."""
-    global layer_map_dict
+    layout without overwriting existing cells.
+    """
     load_options = pya.LoadLayoutOptions()
     load_options.text_enabled = True
     load_options.set_layer_map(layer_map_dict[layout], True)
@@ -96,7 +102,7 @@ def read_layout(layout, gds_filename, disambiguation_name=""):
                 used_cell_names.append(name_cached_cell + disambiguation_name + f"_{k}")
 
     for i_pruned in prune_cells_indices:
-        # print('deleting cell', layout.cell(i_pruned).name)
+        logger.debug('deleting cell ' + layout.cell(i_pruned).name)
         layout.prune_cell(i_pruned, -1)
 
     # every conflict should have been caught above
@@ -107,10 +113,7 @@ def read_layout(layout, gds_filename, disambiguation_name=""):
     return lmap
 
 
-from functools import partial
-
-
-def cache_cell(cls=None, *, extra_hash=None, cache_dir=cache_dir):
+def cache_cell(cls=None, *, extra_hash=None, cache_dir=CACHE_DIR):
     """Caches results of pcell call to save build time.
 
     First, it computes a hash based on:
@@ -148,8 +151,8 @@ def cache_cell(cls=None, *, extra_hash=None, cache_dir=cache_dir):
 
     # decorate draw
     def cache_decorator(draw):
+        @wraps(draw)
         def wrapper_draw(self, cell):
-            global layer_map_dict
             layout = cell.layout()
             try:
                 layer_map_dict[layout]
@@ -171,11 +174,10 @@ def cache_cell(cls=None, *, extra_hash=None, cache_dir=cache_dir):
 
             if os.path.isfile(cache_fpath_gds) and os.path.isfile(cache_fpath_pkl):
                 with open(cache_fpath_pkl, "rb") as file:
-                    ports, read_short_hash_pcell, cellname = pickle.load(file)
-                if debug:
-                    print(f"Reading from cache: {cache_fname}: {cellname}, {ports}")
-                else:
-                    print("r", end="", flush=True)
+                    ports, read_short_hash_pcell, cellname = pickle.load(file)  # pylint: disable=unused-variable
+
+                logger.debug(f"Reading from cache: {cache_fname}: {cellname}, {ports}")
+                print("r", end="", flush=True)
                 if not layout.has_cell(cache_fname):
                     read_layout(layout, cache_fpath_gds, disambiguation_name=cellname)
                 retrieved_cell = layout.cell(cache_fname)
@@ -188,9 +190,7 @@ def cache_cell(cls=None, *, extra_hash=None, cache_dir=cache_dir):
                 # cell.move_tree(retrieved_cell)
             else:
                 if layout.has_cell(cache_fname):
-                    print(
-                        f"WARNING: {cache_fname_gds} does not exist but {cache_fname} is in layout."
-                    )
+                    logger.warning(f"WARNING: {cache_fname_gds} does not exist but {cache_fname} is in layout.")
 
                 # populating .gds and .pkl
                 empty_layout = pya.Layout()
@@ -198,12 +198,8 @@ def cache_cell(cls=None, *, extra_hash=None, cache_dir=cache_dir):
                 empty_cell = empty_layout.create_cell(cell.name)
                 filled_cell, ports = draw(self, empty_cell)
 
-                if debug:
-                    print(
-                        f"Writing to cache: {cache_fname}: {filled_cell.name}, {ports}"
-                    )
-                else:
-                    print("w", end="", flush=True)
+                logger.debug(f"Writing to cache: {cache_fname}: {filled_cell.name}, {ports}")
+                print("w", end="", flush=True)
 
                 cellname, filled_cell.name = filled_cell.name, cache_fname
                 # There can be duplicate cell names in subcells here.
