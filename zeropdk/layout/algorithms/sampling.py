@@ -3,6 +3,9 @@
 
 # Modified by Thomas Ferreira de Lima @thomaslima
 # License: CC BY 4.0 https://creativecommons.org/licenses/by/4.0/
+
+from typing import Callable
+
 try:
     import numpy as np
 except ImportError:
@@ -13,7 +16,9 @@ except ImportError:
 
 else:
 
-    def sample_function(func, points, tol=0.001, min_points=8, max_level=16, sample_transform=None):
+    def sample_function(
+        func: Callable, points, tol=0.001, min_points=8, max_level=16, sample_transform=None
+    ):
         """
         Sample a 1D function to given tolerance by adaptive subdivision.
 
@@ -85,7 +90,7 @@ else:
             )
 
     def _sample_function(
-        func,
+        func: Callable,
         points,
         values=None,
         mask=None,

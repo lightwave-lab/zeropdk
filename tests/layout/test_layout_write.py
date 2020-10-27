@@ -26,7 +26,7 @@ def test_rectangle_write(top_cell):
     ex = kdb.DVector(1, 1)
     ey = kdb.DVector(0, 1)
     r = rectangle(center, width, height, ex, ey)
-    assert repr(r) == "(-10,-15;-10,-5;10,15;10,5)"
+    assert str(r) == "(-10,-15;-10,-5;10,15;10,5)"
 
     insert_shape(TOP, layer, r)
     TOP.write("tests/tmp/test_rectangle.gds")

@@ -1,9 +1,15 @@
+import logging
+import os
+from functools import lru_cache, partial
+from typing import Tuple
 import numpy as np
-from functools import lru_cache
+from scipy.interpolate import interp2d
 from zeropdk.layout.algorithms.sampling import sample_function
 
+logger = logging.getLogger(__name__)
 
-def rotate(point, angle_rad):
+
+def rotate(point, angle_rad: float):
     """ Rotates point counter-clockwisely about its origin by an angle given in radians"""
     th = angle_rad
     x, y = point.x, point.y
@@ -330,7 +336,7 @@ class _Line(_Point):
 
 
 @lru_cache(maxsize=128)
-def _bezier_optimal(angle0, angle3, *, return_result=False):
+def _bezier_optimal(angle0: float, angle3: float) -> Tuple[float, float]:
     """This is a reduced problem of the bézier connection.
 
     Args:
@@ -411,22 +417,17 @@ def _bezier_optimal(angle0, angle3, *, return_result=False):
         else:
             print(f"Could not optimize. Exited with message:{result.message}")
     # print("a={:.3f}<{:.3f} b={:.3f}<{:.3f}".format(a, a_bound, b, b_bound))
-    if return_result:
-        return a, b, result
-    else:
-        return a, b
+    return a, b
 
 
 # STABLE MEMOIZATION
-import os
-from scipy.interpolate import interp2d
 
 pwd = os.path.dirname(os.path.realpath(__file__))
 bezier_optimal_fpath = os.path.join(pwd, "bezier_optimal.npz")
 _original_bezier_optimal = _bezier_optimal
 
 
-def memoized_bezier_optimal(angle0, angle3, file):
+def memoized_bezier_optimal(angle0: float, angle3: float, file: str) -> Tuple[float, float]:
     try:
         npzfile = np.load(file)
         x = npzfile["x"]
@@ -438,17 +439,15 @@ def memoized_bezier_optimal(angle0, angle3, file):
         b = interp2d(x, y, z_b)(angle0, angle3)[0]
         return a, b
     except:
-        print("ERROR")
+        logger.error(f"Optimal Bezier interpolation has failed for angles({angle0}, {angle3}).")
         return _original_bezier_optimal(angle0, angle3)
 
-
-from functools import partial
 
 if os.path.isfile(bezier_optimal_fpath):
     _bezier_optimal = partial(memoized_bezier_optimal, file=bezier_optimal_fpath)
 
 
-def bezier_optimal(P0, P3, angle0, angle3):
+def bezier_optimal(P0, P3, angle0: float, angle3: float):
     """Computes the optimal bezier curve from P0 to P3 with angles 0 and 3
 
     Args:
@@ -534,4 +533,5 @@ try:
 
 
 except ImportError:
+    logger.error("klayout not detected. It is a requirement of zeropdk for now.")
     raise

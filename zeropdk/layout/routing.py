@@ -1,8 +1,10 @@
 """ Module containing routines for routing optical and metal waveguides."""
 
 import logging
-import pya
+import math
 import numpy as np
+import pya
+from zeropdk.layout.geometry import bezier_optimal
 
 
 # from siepic_ebeam_pdk import EBEAM_TECH
@@ -13,7 +15,7 @@ from zeropdk.layout.waveguides import (
     layout_waveguide_angle2,
 )
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 WAVEGUIDE_RADIUS = 10
 WAVEGUIDE_WIDTH = 0.5
@@ -316,13 +318,6 @@ def append_Z_trace_vertical(path, new_point, height, ex, middle_layer=None, midd
     return path
 
 
-# TODO: Reorganize
-debug = False
-
-from zeropdk.layout.geometry import bezier_optimal
-from math import pi
-
-
 def layout_connect_ports(cell, layer, port_from, port_to, smooth=True):
     """Places an "optimal" bezier curve from port_from to port_to."""
 
@@ -336,14 +331,11 @@ def layout_connect_ports(cell, layer, port_from, port_to, smooth=True):
         P0 = port_from.position - dbu * port_from.direction
         P3 = port_to.position - dbu * port_to.direction
         smooth = smooth or True
-    angle_from = np.arctan2(port_from.direction.y, port_from.direction.x) * 180 / pi
-    angle_to = np.arctan2(-port_to.direction.y, -port_to.direction.x) * 180 / pi
+    angle_from = np.arctan2(port_from.direction.y, port_from.direction.x) * 180 / math.pi
+    angle_to = np.arctan2(-port_to.direction.y, -port_to.direction.x) * 180 / math.pi
 
     curve = bezier_optimal(P0, P3, angle_from, angle_to)
-    if debug:
-        for point in curve:
-            print(point)
-        print(f"bezier_optimal({P0}, {P3}, {angle_from}, {angle_to})")
+    logger.debug(f"bezier_optimal({P0}, {P3}, {angle_from}, {angle_to})")
     return layout_waveguide(cell, layer, curve, [port_from.width, port_to.width], smooth=smooth)
 
 

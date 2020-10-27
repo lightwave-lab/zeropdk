@@ -4,7 +4,7 @@ from zeropdk.tech import Tech  # noqa
 from zeropdk import klayout_extend  # noqa
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 stdout_ch = logging.StreamHandler()
 logger.addHandler(stdout_ch)
 

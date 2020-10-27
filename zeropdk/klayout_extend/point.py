@@ -5,6 +5,7 @@ klayout.db.Point Extensions:
   - P * P
   - P / number
   - P.norm()
+  - P.normalize() = P / P.norm()
 """
 from numbers import Number
 from math import sqrt
@@ -95,9 +96,3 @@ for klass in PointLike:
     klass.__setstate__ = pyaPoint__setstate__
     klass.normalize = pyaPoint_normalize
     klass.norm = pyaPoint_norm
-
-import sys
-
-if sys.version_info[0] > 2:
-    assert DPoint(1, 2) / 1.0 == DPoint(1, 2)
-    assert 0.5 * DPoint(1, 2) == DPoint(0.5, 1)
