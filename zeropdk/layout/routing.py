@@ -175,6 +175,8 @@ def compute_paths_from_clusters(
     ports_clusters, layer, ex, pitch=None, middle_taper=False, initial_height=0
 ):
     """
+    Args:
+        - middle_taper: Adds a middle point in the Z-shaped trace attempting to avoid collisions and DRC errors.
     provide a pitch for optical waveguides. electrical waveguides are figured
     out automatically.
     path: list of tuples containing necessary info (pya.DPoint, layer, width)
@@ -264,7 +266,7 @@ def append_Z_trace_vertical(path, new_point, height, ex, middle_layer=None, midd
             from 0 to abs(new_point.y - path.y)
         ex: orientation of ports
         middle_layer (optional): layer of middle trace
-
+        middle_taper (default False): Adds a middle point in the Z-shaped trace attempting to avoid collisions and DRC errors.
     """
 
     assert len(path) > 0
@@ -289,12 +291,14 @@ def append_Z_trace_vertical(path, new_point, height, ex, middle_layer=None, midd
         l1, l2 = l0, l3
     else:
         l1 = l2 = middle_layer
+
     # lmid defined below
 
     # selecting middle widths
     w1, w2 = w0, w3
     if (P2 - P1).norm() <= w1 + w2:
-        w1 = w2 = min(w1, w2)
+        # w1 = w2 = min(w1, w2)
+        middle_taper = False  # middle taper when points are that close looks weird
     if w1 < w2:
         wmid = w1
         lmid = l1
@@ -305,7 +309,9 @@ def append_Z_trace_vertical(path, new_point, height, ex, middle_layer=None, midd
     path.append((P1, l1, w1))
 
     # move P2 a little bit to avoid acute corners
-    delta_w = (w2 - w1) / 2
+    delta_w = abs(w2 - w1) / 2
+    if P3 * ey < P0 * ey:
+        delta_w = -delta_w
     P2 += delta_w * ey
 
     Pmid = (P1 + P2) / 2
