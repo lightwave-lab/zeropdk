@@ -81,7 +81,7 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
             return cos_angle
 
     def sin_angle(point1, point2):
-        return np.abs(cross_prod(point1, point2)) / norm(point1) / norm(point2)
+        return cross_prod(point1, point2) / norm(point1) / norm(point2)
 
     point_width_list = list(zip(points_iterator, width_iterator))
     N = len(point_width_list)
@@ -118,8 +118,9 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
         # and the width has to be bigger than the smallest distance between
         # two points.
 
+        is_small = (min(delta_next.norm(), delta_prev.norm()) < width)
         is_arc = cos_angle(delta_next, delta_prev) > cos(30 * pi / 180)
-        is_arc = is_arc and (min(delta_next.norm(), delta_prev.norm()) < width)
+        is_arc = is_arc and is_small
         center_arc, radius = find_arc(prev_point, point, next_point)
         if is_arc and radius < np.inf:  # algorithm 1
             ray = point - center_arc

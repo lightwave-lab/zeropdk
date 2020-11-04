@@ -213,6 +213,7 @@ def compute_paths_from_clusters(
         else:
             offset_port_from = min([port_from.position * ey for port_from, _ in ports_iterator])
 
+        paths_cluster = []
         for port_from, port_to in ports_iterator:
 
             # # Make port_from be the one with largest width
@@ -229,7 +230,7 @@ def compute_paths_from_clusters(
 
             height += new_pitch
             new_height = height + abs(offset_port_from - P0 * ey)
-            paths.append(
+            paths_cluster.append(
                 append_Z_trace_vertical(
                     [(P0, layer, port_from.width)],
                     (P3, layer, port_to.width),
@@ -238,6 +239,10 @@ def compute_paths_from_clusters(
                     middle_taper=middle_taper,
                 )
             )
+        if orientation == S:
+            paths.extend(paths_cluster)
+        elif orientation == Z:
+            paths.extend(reversed(paths_cluster))
     return paths
 
 
