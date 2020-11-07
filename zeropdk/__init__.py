@@ -11,4 +11,5 @@ logger.addHandler(stdout_ch)
 
 DEBUG = os.environ.get("ZEROPDK_DEBUG", "false") == "true"
 if DEBUG:
+    logger.setLevel(logging.DEBUG)
     stdout_ch.setLevel(logging.DEBUG)
