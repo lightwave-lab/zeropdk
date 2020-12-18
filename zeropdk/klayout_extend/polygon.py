@@ -27,7 +27,7 @@ def patch_simple_polygon(backend):
             The new square's bottom-left corner will be at (-1, 1).
             """
             if ex is None:
-                ex = backend.DPoint(1, 0)
+                ex = backend.DVector(1, 0)
             ey = rotate90(ex)
 
             polygon_dpoints_transformed = [center + p.x * ex + p.y * ey for p in self.each_point()]

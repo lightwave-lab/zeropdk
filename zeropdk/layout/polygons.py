@@ -182,6 +182,7 @@ def layout_ring(cell, layer, center, r, w):
 
 
 def layout_circle(cell, layer, center, r,
+        ex=None,
         x_bounds=(-np.inf, np.inf),
         y_bounds=(-np.inf, np.inf)
     ):
@@ -204,7 +205,7 @@ def layout_circle(cell, layer, center, r,
     # clip dpolygon to bounds
     dpolygon.clip(x_bounds=x_bounds, y_bounds=y_bounds)
     # Transform points (translation + rotation)
-    dpolygon.transform_and_rotate(center)
+    dpolygon.transform_and_rotate(center, ex)
     dpolygon.compress(True)
     insert_shape(cell, layer, dpolygon)
     return dpolygon
