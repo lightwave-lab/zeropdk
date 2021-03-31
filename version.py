@@ -1,9 +1,9 @@
 # version.py
 
 # The short X.Y version.
-version = "20.10"
+version = "20.12"
 # The full version, including alpha/beta/rc tags.
-release = version + "b0"
+release = version + ""
 
 if __name__ == "__main__":
     print("zeropdk v" + version)
