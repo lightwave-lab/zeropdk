@@ -181,27 +181,34 @@ def layout_ring(cell, layer, center, r, w):
     return dpoly
 
 
-def layout_circle(cell, layer, center, r):
+def layout_circle(cell, layer, center, r,
+        ex=None,
+        x_bounds=(-np.inf, np.inf),
+        y_bounds=(-np.inf, np.inf)
+    ):
     """
     function to produce the layout of a filled circle
     cell: layout cell to place the layout
     layer: which layer to use
     center: origin DPoint
     r: radius
-    w: waveguide width
-    theta_start, theta_end: angle in radians
+    x_bounds and y_bounds relative to the center, before rotation by ex.
     units in microns
     optimal sampling
     """
 
-    arc_function = lambda t: np.array([center.x + r * np.cos(t), center.y + r * np.sin(t)])
+    arc_function = lambda t: np.array([r * np.cos(t), r * np.sin(t)])
     t, coords = sample_function(arc_function, [0, 2 * np.pi - 0.001], tol=0.002 / r)
 
     # dbu = cell.layout().dbu
-    dpoly = pya.DSimplePolygon([pya.DPoint(x, y) for x, y in zip(*coords)])
-    # cell.shapes(layer).insert(dpoly.to_itype(dbu))
-    insert_shape(cell, layer, dpoly)
-    return dpoly
+    dpolygon = pya.DSimplePolygon([pya.DPoint(x, y) for x, y in zip(*coords)])
+    # clip dpolygon to bounds
+    dpolygon.clip(x_bounds=x_bounds, y_bounds=y_bounds)
+    # Transform points (translation + rotation)
+    dpolygon.transform_and_rotate(center, ex)
+    dpolygon.compress(True)
+    insert_shape(cell, layer, dpolygon)
+    return dpolygon
 
 
 layout_disk = layout_circle

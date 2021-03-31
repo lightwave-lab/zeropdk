@@ -475,6 +475,7 @@ class PCell:
             transform_into=transform_into,
         )
 
+_zeropdk_cache_store = dict()
 
 def GDSCell(cell_name: str, filename: str, gds_dir: str):
     """
@@ -492,20 +493,36 @@ def GDSCell(cell_name: str, filename: str, gds_dir: str):
     class GDS_cell_base(PCell):
         """ Imports a gds file and places it."""
 
-        _cell_cache = {}
+        # If we call GDSCell with the same parameters, we want the same cache.
+        _cell_cache = _zeropdk_cache_store.setdefault((cell_name, filename, gds_dir), dict())
+        _gds_cell_name = cell_name
 
         def __init__(self, name=cell_name, params=None):
             PCell.__init__(self, name=name, params=params)
 
         def get_gds_cell(self, layout):
             filepath = os.path.join(gds_dir, filename)
+            cell_name = self._gds_cell_name
 
             # Attempt to read from cache first
             if (cell_name, filepath, layout) in self._cell_cache:
                 gdscell = self._cell_cache[(cell_name, filepath, layout)]
             else:
+                # Attempt to include cell_name into layout.
+                # KLayout will automatically prevent duplicate insertion.
                 gdscell = layout.read_cell(cell_name, filepath)
-            self._cell_cache[(cell_name, filepath, layout)] = gdscell
+
+                # It is possible that gdscell.name is different than cell_name,
+                # in case of a duplicate
+                new_cell_name = gdscell.name
+
+                # Add this cell to the list of cells that cannot be deduplicated
+                from zeropdk.layout.cache import CACHE_PROP_ID  # pylint: disable=import-outside-toplevel
+                cache_set = set([new_cell_name])
+                if layout.property(CACHE_PROP_ID) is not None:
+                    cache_set |= set(layout.property(CACHE_PROP_ID).split(","))
+                layout.set_property(CACHE_PROP_ID, ",".join(cache_set))
+                self._cell_cache[(cell_name, filepath, layout)] = gdscell
             return gdscell
 
         def draw_gds_cell(self, cell):

@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 layer_map_dict: Dict[Type[pya.Layout], Type[pya.LayerMap]] = dict()
 CACHE_ACTIVATED = os.environ.get("ZEROPDK_CACHE_ACTIVATED", "true") == "true"
 CACHE_DIR = os.environ.get("ZEROPDK_CACHE_DIR", os.path.join(os.getcwd(), "cache"))
-
+CACHE_PROP_ID = 458
 
 def produce_hash(self: Type[PCell], extra: Any = None) -> str:
     """Produces a hash of a PCell instance based on:
@@ -46,6 +46,7 @@ def read_layout(layout: Type[pya.Layout], gds_filename: str, disambiguation_name
     load_options = pya.LoadLayoutOptions()
     load_options.text_enabled = True
     load_options.set_layer_map(layer_map_dict[layout], True)
+    load_options.properties_enabled = True
 
     # store and take away the cell names of all cells read so far
     # (by setting the cell name to "" the cells basically become invisible for
@@ -61,8 +62,19 @@ def read_layout(layout: Type[pya.Layout], gds_filename: str, disambiguation_name
     for i in cell_indices.values():
         layout.rename_cell(i, "")
 
+    # Store cache cell names (these cannot be deduplicated)
+    cache_set = set()
+    if layout.property(CACHE_PROP_ID) is not None:
+        cache_set |= set(layout.property(CACHE_PROP_ID).split(","))
+        layout.delete_property(CACHE_PROP_ID)
+
     # Read the new gds_filename
     lmap = layout.read(gds_filename, load_options)
+    if layout.property(CACHE_PROP_ID) is not None:
+        cache_set |= set(layout.property(CACHE_PROP_ID).split(","))
+    if cache_set:
+        logger.debug("cache_set state: %s", cache_set)
+        layout.set_property(CACHE_PROP_ID, ",".join(cache_set))
 
     # in the new layout, get all cell names, assuming, again, that there are no duplicates
     cell_names2 = [(cell.cell_index(), cell.name) for cell in layout.each_cell()]
@@ -81,8 +93,13 @@ def read_layout(layout: Type[pya.Layout], gds_filename: str, disambiguation_name
     used_cell_names = list(cell_indices.keys())
     for i_duplicate, name_cached_cell in cell_names2:
         if name_cached_cell in cell_indices.keys():
-            if name_cached_cell.startswith("cache_"):
-                for parent_inst_array in layout.cell(i_duplicate).each_parent_inst():
+            if name_cached_cell.startswith("cache_") or (name_cached_cell in cache_set):
+                # cell_indices[name_cached_cell] contains a reference to the "original" cell
+                # we want to find every instance to duplicates (layout.cell(i_duplicate))
+                # and replace the cell pointer to the "original" cell.
+                # We also want to delete the de-referenced cell.
+                # This for loop modifies the cell in-place, hence the list around the iterator.
+                for parent_inst_array in list(layout.cell(i_duplicate).each_parent_inst()):
                     cell_instance = parent_inst_array.child_inst()
                     cell_instance.cell = layout.cell(cell_indices[name_cached_cell])
                 prune_cells_indices.append(i_duplicate)
@@ -97,7 +114,7 @@ def read_layout(layout: Type[pya.Layout], gds_filename: str, disambiguation_name
                 used_cell_names.append(name_cached_cell + disambiguation_name + f"_{k}")
 
     for i_pruned in prune_cells_indices:
-        logger.debug("deleting cell " + layout.cell(i_pruned).name)
+        logger.debug("WARNING: deleting cell " + layout.cell(i_pruned).name)
         layout.prune_cell(i_pruned, -1)
 
     # every conflict should have been caught above
@@ -204,7 +221,11 @@ def cache_cell(
 
                 cellname, filled_cell.name = filled_cell.name, cache_fname
                 # There can be duplicate cell names in subcells here.
-                filled_cell.write(cache_fpath_gds)
+                # We are saving a list of them inside a property named CACHE_PROP_ID
+                # So we need to allow the properties to be saved inside the gds file (incompatible with the GDS2 standard)
+                save_options = pya.SaveLayoutOptions()
+                save_options.gds2_write_file_properties = True
+                empty_layout.write(cache_fpath_gds, save_options)
                 with open(cache_fpath_pkl, "wb") as file:
                     pickle.dump((ports, short_hash_pcell, cellname), file)
 
