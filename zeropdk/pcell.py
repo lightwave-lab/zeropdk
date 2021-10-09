@@ -477,7 +477,7 @@ class PCell:
 
 _zeropdk_cache_store = dict()
 
-def GDSCell(cell_name: str, filename: str, gds_dir: str):
+def GDSCell(cell_name: str, filename: str, gds_dir: str) -> Type[PCell]:
     """
     Args:
         cell_name: cell within that file.
@@ -489,6 +489,9 @@ def GDSCell(cell_name: str, filename: str, gds_dir: str):
     """
 
     assert gds_dir is not None
+    filepath = os.path.join(gds_dir, filename)
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(f"{filename} not found in {gds_dir}")
 
     class GDS_cell_base(PCell):
         """ Imports a gds file and places it."""
@@ -500,7 +503,7 @@ def GDSCell(cell_name: str, filename: str, gds_dir: str):
         def __init__(self, name=cell_name, params=None):
             PCell.__init__(self, name=name, params=params)
 
-        def get_gds_cell(self, layout):
+        def get_gds_cell(self, layout: kdb.Layout) -> kdb.Cell:
             filepath = os.path.join(gds_dir, filename)
             cell_name = self._gds_cell_name
 
@@ -525,7 +528,7 @@ def GDSCell(cell_name: str, filename: str, gds_dir: str):
                 self._cell_cache[(cell_name, filepath, layout)] = gdscell
             return gdscell
 
-        def draw_gds_cell(self, cell):
+        def draw_gds_cell(self, cell: kdb.Cell) -> kdb.Cell:
             logger.warning("Using default draw_gds_cell method in %s.", self.name)
             layout = cell.layout()
             gdscell = self.get_gds_cell(layout)

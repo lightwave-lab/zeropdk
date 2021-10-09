@@ -1,3 +1,4 @@
+from _pytest.config import filename_arg
 import pytest
 import os
 from ..context import zeropdk  # noqa
@@ -98,12 +99,10 @@ def test_wrong_gdscellname(top_cell):
 
 def test_wrong_filename(top_cell):
     gds_dir = gdslibpath
-    princeton_logo = GDSCell("princeton_logo", "princeton_logo_simple_wrongname.gds", gds_dir)(
-        name="xyz"
-    )
-    TOP, layout = top_cell()
-    with pytest.raises(RuntimeError, match='princeton_logo_simple_wrongname.gds'):
-        plogo, _ = princeton_logo.new_cell(layout)
+    with pytest.raises(FileNotFoundError, match=f'princeton_logo_simple_wrongname.gds not found in {gdslibpath}'):
+        princeton_logo = GDSCell("princeton_logo", "princeton_logo_simple_wrongname.gds", gds_dir)(
+            name="xyz"
+        )
 
 def test_gdscellcache(top_cell):
 
