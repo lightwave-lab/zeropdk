@@ -5,18 +5,18 @@ import pickle
 import logging
 from hashlib import sha256
 from functools import partial, wraps
-from typing import Type, Any, Union, Callable, Dict
+from typing import Any, Union, Callable, Dict
 
 import klayout.db as pya
 from zeropdk.pcell import PCell
 
 logger = logging.getLogger(__name__)
-layer_map_dict: Dict[Type[pya.Layout], Type[pya.LayerMap]] = dict()
+layer_map_dict: Dict[pya.Layout, pya.LayerMap] = dict()
 CACHE_ACTIVATED = os.environ.get("ZEROPDK_CACHE_ACTIVATED", "true") == "true"
 CACHE_DIR = os.environ.get("ZEROPDK_CACHE_DIR", os.path.join(os.getcwd(), "cache"))
 CACHE_PROP_ID = 458
 
-def produce_hash(self: Type[PCell], extra: Any = None) -> str:
+def produce_hash(self: PCell, extra: Any = None) -> str:
     """Produces a hash of a PCell instance based on:
     1. the source code of the class and its bases.
     2. the non-default parameter with which the pcell method is called
@@ -39,7 +39,7 @@ def produce_hash(self: Type[PCell], extra: Any = None) -> str:
     return short_hash_pcell
 
 
-def read_layout(layout: Type[pya.Layout], gds_filename: str, disambiguation_name: str = ""):
+def read_layout(layout: pya.Layout, gds_filename: str, disambiguation_name: str = ""):
     """Reads the layout in the gds file and imports all cells into
     layout without overwriting existing cells.
     """
@@ -126,8 +126,8 @@ def read_layout(layout: Type[pya.Layout], gds_filename: str, disambiguation_name
 
 
 def cache_cell(
-    cls: Type[PCell] = None, *, extra_hash: Any = None, cache_dir: str = CACHE_DIR
-) -> Union[Type[PCell], Callable]:
+    cls: PCell = None, *, extra_hash: Any = None, cache_dir: str = CACHE_DIR
+) -> Union[PCell, Callable]:
     """Caches results of pcell call to save build time.
 
     First, it computes a hash based on:
