@@ -1,12 +1,14 @@
 """PCell definitions that improve upon Klayout pcells."""
 
 import os
+import warnings
+import logging
 from copy import copy, deepcopy
 from typing import Dict, List, Tuple, Any, Type, Optional
-import logging
 from collections.abc import Mapping, MutableMapping
 
 import klayout.db as kdb
+from zeropdk import ZeroPDKWarning
 from zeropdk.layout.geometry import rotate90
 
 logger = logging.getLogger(__name__)
@@ -491,7 +493,7 @@ def GDSCell(cell_name: str, filename: str, gds_dir: str) -> Type[PCell]:
     assert gds_dir is not None
     filepath = os.path.join(gds_dir, filename)
     if not os.path.exists(filepath):
-        raise FileNotFoundError(f"{filename} not found in {gds_dir}")
+        warnings.warn(f"Warning while creating GDSCell for cell name '{cell_name}': '{filename}' not found in '{gds_dir}'", category=ZeroPDKWarning)
 
     class GDS_cell_base(PCell):
         """ Imports a gds file and places it."""
