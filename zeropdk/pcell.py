@@ -4,7 +4,7 @@ import os
 import warnings
 import logging
 from copy import copy, deepcopy
-from typing import Dict, List, Tuple, Any, Type, Optional
+from typing import Dict, List, Tuple, Any, Optional
 from collections.abc import Mapping, MutableMapping
 
 import klayout.db as kdb
@@ -167,8 +167,8 @@ class ParamContainer(Mapping):
     TypeError: Cannot set orange to string
     """
 
-    _container: Dict[str, Type[PCellParameter]]
-    _current_values: Dict[str, Type[PCellParameter]]
+    _container: Dict[str, PCellParameter]
+    _current_values: Dict[str, PCellParameter]
 
     def __init__(self, *args):
         """Two ways of initializing:
@@ -188,7 +188,7 @@ class ParamContainer(Mapping):
                 param = arg  # TODO: check type
                 self.add_param(param)
 
-    def add_param(self, param: Type[PCellParameter]):
+    def add_param(self, param: PCellParameter):
         self._container[param.name] = param
 
         # delete from current values if overwriting parameter
@@ -249,8 +249,8 @@ class Port(object):
 
     def __init__(self, name, position, direction, width, port_type=None):
         self.name: str = name
-        self.position: Type[kdb.DPoint] = position  # Point
-        self.direction: Type[kdb.DVector] = direction  # Vector
+        self.position: kdb.DPoint = position  # Point
+        self.direction: kdb.DVector = direction  # Vector
         self.type: str = port_type
         self.width: float = width
 
@@ -271,14 +271,14 @@ class Port(object):
 
         return self
 
-    def rotate(self, angle_deg):
+    def rotate(self, angle_deg: float):
         from zeropdk.layout.geometry import rotate
         from math import pi
 
         self.direction = rotate(self.direction, angle_deg * pi / 180)
         return self
 
-    def draw(self, cell, layer):
+    def draw(self, cell: kdb.Cell, layer: kdb.LayerInfo):
         """ Draws this port on cell's layer using klayout.db"""
         if self.name.startswith("el"):
             pin_length = self.width
@@ -327,10 +327,10 @@ class Port(object):
 
 
 def place_cell(
-    parent_cell: Type[kdb.Cell],
-    pcell: Type[kdb.Cell],
-    ports_dict: Dict[str, Type[Port]],
-    placement_origin: Type[kdb.DPoint],
+    parent_cell: kdb.Cell,
+    pcell: kdb.Cell,
+    ports_dict: Dict[str, Port],
+    placement_origin: kdb.DPoint,
     relative_to: Optional[str] = None,
     transform_into: bool = False,
 ):
@@ -381,9 +381,9 @@ class PCell:
     # properties. The logic for this can be found in __new__ method
     # below
     params: ParamContainer = ParamContainer()
-    _cell: Type[kdb.Cell]
+    _cell: kdb.Cell
 
-    def draw(self, cell):
+    def draw(self, cell: kdb.Cell) -> Tuple[kdb.Cell, Dict[str, Port]]:
         raise NotImplementedError()
 
     def __new__(cls, *args, **kwargs):
@@ -443,11 +443,11 @@ class PCell:
 
     def place_cell(
         self,
-        parent_cell: Type[kdb.Cell],
-        placement_origin: Type[kdb.DPoint],
+        parent_cell: kdb.Cell,
+        placement_origin: kdb.DPoint,
         relative_to: Optional[str] = None,
         transform_into: bool = False,
-    ):
+    ) -> Dict[str, Port]:
         """Places this pcell into parent_cell and return ports with
             updated position and orientation.
         Args:
@@ -479,7 +479,7 @@ class PCell:
 
 _zeropdk_cache_store = dict()
 
-def GDSCell(cell_name: str, filename: str, gds_dir: str) -> Type[PCell]:
+def GDSCell(cell_name: str, filename: str, gds_dir: str) -> PCell:
     """
     Args:
         cell_name: cell within that file.
@@ -550,30 +550,9 @@ def GDSCell(cell_name: str, filename: str, gds_dir: str) -> Type[PCell]:
 
 
 def port_to_pin_helper(
-    ports_list: List[Type[Port]], cell: Type[kdb.Cell], layerPinRec: Type[kdb.LayerInfo]
+    ports_list: List[Port], cell: kdb.Cell, layerPinRec: kdb.LayerInfo
 ):
     """ Draws port shapes for visual help in KLayout. """
-    # Create the pins, as short paths:
-    # from siepic_tools.config import PIN_LENGTH
-    PIN_LENGTH = 100
-    dbu = cell.layout().dbu
 
     for port in ports_list:
-        if port.name.startswith("el"):
-            pin_length = port.width
-        else:
-            pin_length = PIN_LENGTH * dbu
-
-        port_position_i = port.position.to_itype(dbu)
-        cell.shapes(layerPinRec).insert(
-            kdb.DPath(
-                [
-                    port.position - 0.5 * pin_length * port.direction,
-                    port.position + 0.5 * pin_length * port.direction,
-                ],
-                port.width,
-            ).to_itype(dbu)
-        )
-        cell.shapes(layerPinRec).insert(
-            kdb.Text(port.name, kdb.Trans(kdb.Trans.R0, port_position_i.x, port_position_i.y))
-        ).text_size = (2 / dbu)
+        port.draw(cell, layerPinRec)

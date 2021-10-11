@@ -1,3 +1,4 @@
+from typing import Iterable
 from zeropdk.layout import insert_shape
 from zeropdk.layout.geometry import cross_prod, project, rotate90
 
@@ -117,7 +118,7 @@ def layout_path(cell, layer, point_iterator, w):
     cell.shapes(layer).insert(pya.Path.from_dpath(path))
 
 
-def layout_path_with_ends(cell, layer, point_iterator, w):
+def layout_path_with_ends(cell, layer: kdb.LayerInfo, point_iterator: Iterable[kdb.DPoint], w: float):
     """ Simple wrapper for pya.DPath."""
     dpath = pya.DPath(list(point_iterator), w, w / 2, w / 2)
     cell.shapes(layer).insert(dpath)
