@@ -17,6 +17,11 @@ def rotate(point, angle_rad: float):
     new_y = y * np.cos(th) + x * np.sin(th)
     return point.__class__(new_x, new_y)
 
+def rotate_deg(point, angle_deg: float):
+    """Rotates point counter-clockwisely about its origin by an angle given in degrees"""
+    angle_rad = angle_deg / 180 * np.pi
+    return rotate(point, angle_rad)
+
 
 rotate90 = lambda point: rotate(point, np.pi / 2)
 

@@ -148,7 +148,7 @@ def layout_manhattan_traces(cell, path, ex):
 
 
 def connect_ports_L(cell, cplayer, ports_from, ports_to, ex):
-    """ Connects ports ports_from to ports_to, always leaving vertically"""
+    """ Connects ports ports_from to ports_to, always leaving vertically (with respect to ex)"""
 
     ey = rotate90(ex)
     for port_from, port_to in zip(ports_from, ports_to):
