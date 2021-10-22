@@ -280,7 +280,8 @@ def solve_3(A, B, C, radius):
     p0, p1, p2 = A, B, C
     α = angle_between(p0 - p1, p2 - p1)
 
-    if α % (2 * pi) == pi:
+    from math import isclose
+    if isclose(α % (2 * pi), pi):
         # if points are collinear, just ignore middle point
         return ([], [p0, p2])
 
