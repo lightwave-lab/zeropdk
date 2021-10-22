@@ -479,11 +479,16 @@ def unique_points(point_list):
 
     return unique_points
 
-
-def layout_waveguide_from_points(
+def waveguide_from_points(
     cell, layer, points, width, radius, taper_width=None, taper_length=None
 ):
+    """Draws a waveguide with rounded corners given a path of manhattan-like points.
 
+    Returns:
+        - points: list of DPoints
+        - widths: list of widths
+
+    """
     assert radius > width / 2, "Please use a radius larger than the half-width"
     points = unique_points(points)
 
@@ -536,7 +541,19 @@ def layout_waveguide_from_points(
         _draw_widths2.append(w)
         _cur_point = p
 
-    layout_waveguide(cell, layer, _draw_points2, _draw_widths2, smooth=False)
+    return _draw_points2, _draw_widths2
+
+def layout_waveguide_from_points(
+    cell, layer, points, width, radius, taper_width=None, taper_length=None
+):
+
+    points, widths = waveguide_from_points(
+        cell, layer, points, width, radius,
+        taper_width=taper_width,
+        taper_length=taper_length
+    )
+
+    layout_waveguide(cell, layer, points, widths, smooth=False)
 
     return cell
 
