@@ -1,12 +1,15 @@
 """ Straight waveguide rounding algorithms"""
 from functools import lru_cache
 from math import atan2, tan, inf
+from typing import List, Tuple
+import warnings
 import numpy as np
 import klayout.db as kdb
 from zeropdk.layout.geometry import rotate, fix_angle, cross_prod
 from zeropdk.layout.algorithms.sampling import sample_function
+from zeropdk.layout.polygons import layout_path
 from zeropdk.layout.waveguides import layout_waveguide
-
+from zeropdk import ZeroPDKUserError, ZeroPDKWarning
 
 def angle_between(v1, v0):
     """Compute angle in radians between v1 and v0.
@@ -468,6 +471,7 @@ def compute_tapered_path(path, waveguide_width, taper_width, taper_length):
 
 
 def unique_points(point_list):
+    """ Takes a list of DPoints and removes any duplicates."""
     if len(point_list) < 2:
         return point_list
 
@@ -482,29 +486,27 @@ def unique_points(point_list):
 
 def waveguide_from_points(
     cell, layer, points, width, radius, taper_width=None, taper_length=None
-):
+) -> Tuple[List[kdb.DPoint], List[float]]:
     """Draws a waveguide with rounded corners given a path of manhattan-like points.
 
     Returns:
         - points: list of DPoints
-        - widths: list of widths
+        - widths: list of widths with same length as points.
 
     """
     assert radius > width / 2, "Please use a radius larger than the half-width"
     points = unique_points(points)
 
     if len(points) < 2:
-        # Nothing to do
-        return cell
+        raise ZeroPDKUserError(f"Tried to draw a waveguide with only one point.")
 
     # First, get the list of lines and arcs
     try:
         rounded_path = compute_rounded_path(points, radius)
     except Exception as e:
-        print("ERROR:", e)
-        print("Continuing...")
-        layout_waveguide(cell, layer, points, 0.1)
-        return cell
+        warnings.warn(f"Error while computing rounded path for waveguide: {e}. \nContinuing...", category=ZeroPDKWarning)
+        layout_path(cell, layer, points, 0.1)
+        return points, [width] * len(points)
 
     # Taper path if necessary
     if taper_width is not None and taper_length is not None:

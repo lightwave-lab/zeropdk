@@ -112,7 +112,7 @@ import numpy as np
 from math import pi
 
 
-def layout_path(cell, layer, point_iterator, w):
+def layout_path(cell, layer: kdb.LayerInfo, point_iterator: Iterable[kdb.DPoint], w: float):
     """ Simple wrapper for pya.DPath."""
     path = pya.DPath(list(point_iterator), w, 0, 0).to_itype(cell.layout().dbu)
     cell.shapes(layer).insert(pya.Path.from_dpath(path))
