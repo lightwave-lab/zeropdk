@@ -363,8 +363,9 @@ def compute_rounded_path(points, radius):
             can_rewind = True
         except ClearanceRewind:
             # Try going forward first, just in case. See stress tests below.
-            forward_possible = True
+            forward_possible = False
             if len(points_left[0:4]) >= 4:
+                forward_possible = True
                 try:
                     solution, rest_points = solve_4(*points_left[0:4], radius)
                     old_points_left = points_left[:]
@@ -594,57 +595,57 @@ def main():
 
     ex, ey = kdb.DPoint(1, 0), kdb.DPoint(0, 1)
 
-    # points = [0 * ex, 10 * ex, 10 * (ex + ey), 30 * ex]
-    # origin = 0 * ey
-    # points = [origin + point for point in points]
-    # x = compute_rounded_path(points, 3)
-    # trace_rounded_path(TOP, layer, x, 0.5)
-    # trace_reference_path(TOP, layerRec, points, 0.5)
+    points = [0 * ex, 10 * ex, 10 * (ex + ey), 30 * ex]
+    origin = 0 * ey
+    points = [origin + point for point in points]
+    x = compute_rounded_path(points, 3)
+    trace_rounded_path(TOP, layer, x, 0.5)
+    trace_reference_path(TOP, layerRec, points, 0.5)
 
-    # points = [0 * ex, 10 * ex, 5 * (ex - ey), 17 * ex, 30 * ex]
-    # origin = 30 * ey
-    # points = [origin + point for point in points]
-    # x = compute_rounded_path(points, 3)
-    # trace_rounded_path(TOP, layer, x, 0.5)
-    # trace_reference_path(TOP, layerRec, points, 0.5)
+    points = [0 * ex, 10 * ex, 5 * (ex - ey), 17 * ex, 30 * ex]
+    origin = 30 * ey
+    points = [origin + point for point in points]
+    x = compute_rounded_path(points, 3)
+    trace_rounded_path(TOP, layer, x, 0.5)
+    trace_reference_path(TOP, layerRec, points, 0.5)
 
-    # radius = 3
-    # for ex2 in (ex, -ex):
-    #     points = [2 * ex2]
-    #     for d in np.arange(1, 10, 2.5):
-    #         origin = points[-1]
-    #         displacements = [
-    #             4 * radius * ex2,
-    #             4 * radius * ex2 + d * ey - 1 * d * ex2,
-    #             d * ey,
-    #             (d + 2 * radius) * ey,
-    #         ]
-    #         points += [origin + displacement for displacement in displacements]
-    #     origin = 15 * ex + 40 * ey
-    #     points = [origin + point for point in points]
-    #     x = compute_rounded_path(points, radius)
-    #     trace_rounded_path(TOP, layer, x, 0.5)
-    #     trace_reference_path(TOP, layerRec, points, 0.5)
+    radius = 3
+    for ex2 in (ex, -ex):
+        points = [2 * ex2]
+        for d in np.arange(1, 10, 2.5):
+            origin = points[-1]
+            displacements = [
+                4 * radius * ex2,
+                4 * radius * ex2 + d * ey - 1 * d * ex2,
+                d * ey,
+                (d + 2 * radius) * ey,
+            ]
+            points += [origin + displacement for displacement in displacements]
+        origin = 15 * ex + 40 * ey
+        points = [origin + point for point in points]
+        x = compute_rounded_path(points, radius)
+        trace_rounded_path(TOP, layer, x, 0.5)
+        trace_reference_path(TOP, layerRec, points, 0.5)
 
-    # # Layout tapered waveguide
-    # points = [
-    #     0 * ex,
-    #     100 * ex,
-    #     100 * ex + 20 * ey,
-    #     10 * ex + 5 * ey,
-    #     10 * ex + 25 * ey,
-    #     100 * ex + 30 * ey,
-    # ]
+    # Layout tapered waveguide
+    points = [
+        0 * ex,
+        100 * ex,
+        100 * ex + 20 * ey,
+        10 * ex + 5 * ey,
+        10 * ex + 25 * ey,
+        100 * ex + 30 * ey,
+    ]
 
-    # # Untapered
-    # origin = 40 * ex
-    # points_ = [origin + point for point in points]
-    # layout_waveguide_from_points(TOP, layer, points_, 0.5, 5)
+    # Untapered
+    origin = 40 * ex
+    points_ = [origin + point for point in points]
+    layout_waveguide_from_points(TOP, layer, points_, 0.5, 5)
 
-    # # Tapered
-    # origin = 40 * ex + 40 * ey
-    # points_ = [origin + point for point in points]
-    # layout_waveguide_from_points(TOP, layer, points_, 0.5, 5, taper_width=3, taper_length=10)
+    # Tapered
+    origin = 40 * ex + 40 * ey
+    points_ = [origin + point for point in points]
+    layout_waveguide_from_points(TOP, layer, points_, 0.5, 5, taper_width=3, taper_length=10)
 
 
     # Stress test about ClearanceRewind when forward would work.
