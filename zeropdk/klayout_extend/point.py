@@ -85,6 +85,8 @@ def pyaPoint__getstate__(self):
 def pyaPoint__setstate__(self, state):
     self.x, self.y = state
 
+def pyaPoint__repr__(self):
+    return f"{self.__class__.__name__}({self.x}, {self.y})"
 
 for klass in PointLike:
     klass.__init__ = pyaPoint__init__
@@ -94,5 +96,6 @@ for klass in PointLike:
     klass.__deepcopy__ = pyaPoint__deepcopy__
     klass.__getstate__ = pyaPoint__getstate__
     klass.__setstate__ = pyaPoint__setstate__
+    klass.__repr__ = pyaPoint__repr__
     klass.normalize = pyaPoint_normalize
     klass.norm = pyaPoint_norm

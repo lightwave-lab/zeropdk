@@ -338,7 +338,7 @@ def compute_rounded_path(points, radius):
         - If solve3 cannot solve because AB is too short, raise a ClearanceRewind error
         - Conversely, if solve3 cannot solve because BC is too short, raise a ClearanceForward error
         - In the case of ClearanceForward, call solve4 on (A,B,C,D)
-        - In the case of ClearanceForward, call solve4 on (O,A,B,C), where O is the previous point
+        - In the case of ClearanceRewind, call solve4 on (O,A,B,C), where O is the previous point
     Returns:
         - A list of _Line and _Arc objects
     """
@@ -350,11 +350,11 @@ def compute_rounded_path(points, radius):
 
     # Sanity checks
     assert N >= 3, "Insufficient number of points, N = {N} < 3".format(N=N)
-
     old_rounded_path = rounded_path = list()
     old_points_left = points_left = list(points)
-    can_rewind = False
 
+    # condition to check if the last solve_3 was successful (can undo if necessary)
+    can_rewind = False
     while len(points_left) > 2:
         try:
             solution, rest_points = solve_3(*points_left[0:3], radius)
@@ -362,20 +362,32 @@ def compute_rounded_path(points, radius):
             points_left = rest_points + points_left[3:]
             can_rewind = True
         except ClearanceRewind:
-            if not can_rewind:
-                raise RuntimeError(
-                    "Not enough space for enough turns: Cannot solve:", *points_left[0:3]
-                )
-            points_left = old_points_left
-            rounded_path = old_rounded_path
-            if len(points_left[0:4]) < 4:
-                raise RuntimeError(
-                    "Not enough space for enough turns: Cannot solve:", *points_left[0:4]
-                )
-            solution, rest_points = solve_4(*points_left[0:4], radius)
-            old_points_left = points_left[:]
-            points_left = rest_points + points_left[4:]
-            can_rewind = False
+            # Try going forward first, just in case. See stress tests below.
+            forward_possible = True
+            if len(points_left[0:4]) >= 4:
+                try:
+                    solution, rest_points = solve_4(*points_left[0:4], radius)
+                    old_points_left = points_left[:]
+                    points_left = rest_points + points_left[4:]
+                    can_rewind = False
+                except:
+                    forward_possible = False
+            if not forward_possible:
+                if not can_rewind:
+                    raise RuntimeError(
+                        "Not enough space for enough turns: Cannot solve:", *points_left[0:3]
+                    )
+                # Rewind: undo last rounded path element and try solve_4.
+                points_left = old_points_left
+                rounded_path = old_rounded_path
+                if len(points_left[0:4]) < 4:
+                    raise RuntimeError(
+                        "Not enough space for enough turns: Cannot solve:", *points_left[0:4]
+                    )
+                solution, rest_points = solve_4(*points_left[0:4], radius)
+                old_points_left = points_left[:]
+                points_left = rest_points + points_left[4:]
+                can_rewind = False
         except ClearanceForward:
             if len(points_left[0:4]) < 4:
                 raise RuntimeError(
@@ -582,57 +594,82 @@ def main():
 
     ex, ey = kdb.DPoint(1, 0), kdb.DPoint(0, 1)
 
-    points = [0 * ex, 10 * ex, 10 * (ex + ey), 30 * ex]
-    origin = 0 * ey
-    points = [origin + point for point in points]
-    x = compute_rounded_path(points, 3)
-    trace_rounded_path(TOP, layer, x, 0.5)
-    trace_reference_path(TOP, layerRec, points, 0.5)
+    # points = [0 * ex, 10 * ex, 10 * (ex + ey), 30 * ex]
+    # origin = 0 * ey
+    # points = [origin + point for point in points]
+    # x = compute_rounded_path(points, 3)
+    # trace_rounded_path(TOP, layer, x, 0.5)
+    # trace_reference_path(TOP, layerRec, points, 0.5)
 
-    points = [0 * ex, 10 * ex, 5 * (ex - ey), 17 * ex, 30 * ex]
-    origin = 30 * ey
-    points = [origin + point for point in points]
-    x = compute_rounded_path(points, 3)
-    trace_rounded_path(TOP, layer, x, 0.5)
-    trace_reference_path(TOP, layerRec, points, 0.5)
+    # points = [0 * ex, 10 * ex, 5 * (ex - ey), 17 * ex, 30 * ex]
+    # origin = 30 * ey
+    # points = [origin + point for point in points]
+    # x = compute_rounded_path(points, 3)
+    # trace_rounded_path(TOP, layer, x, 0.5)
+    # trace_reference_path(TOP, layerRec, points, 0.5)
 
-    radius = 3
-    for ex2 in (ex, -ex):
-        points = [2 * ex2]
-        for d in np.arange(1, 10, 2.5):
-            origin = points[-1]
-            displacements = [
-                4 * radius * ex2,
-                4 * radius * ex2 + d * ey - 1 * d * ex2,
-                d * ey,
-                (d + 2 * radius) * ey,
-            ]
-            points += [origin + displacement for displacement in displacements]
-        origin = 15 * ex + 40 * ey
-        points = [origin + point for point in points]
-        x = compute_rounded_path(points, radius)
-        trace_rounded_path(TOP, layer, x, 0.5)
-        trace_reference_path(TOP, layerRec, points, 0.5)
+    # radius = 3
+    # for ex2 in (ex, -ex):
+    #     points = [2 * ex2]
+    #     for d in np.arange(1, 10, 2.5):
+    #         origin = points[-1]
+    #         displacements = [
+    #             4 * radius * ex2,
+    #             4 * radius * ex2 + d * ey - 1 * d * ex2,
+    #             d * ey,
+    #             (d + 2 * radius) * ey,
+    #         ]
+    #         points += [origin + displacement for displacement in displacements]
+    #     origin = 15 * ex + 40 * ey
+    #     points = [origin + point for point in points]
+    #     x = compute_rounded_path(points, radius)
+    #     trace_rounded_path(TOP, layer, x, 0.5)
+    #     trace_reference_path(TOP, layerRec, points, 0.5)
 
-    # Layout tapered waveguide
+    # # Layout tapered waveguide
+    # points = [
+    #     0 * ex,
+    #     100 * ex,
+    #     100 * ex + 20 * ey,
+    #     10 * ex + 5 * ey,
+    #     10 * ex + 25 * ey,
+    #     100 * ex + 30 * ey,
+    # ]
+
+    # # Untapered
+    # origin = 40 * ex
+    # points_ = [origin + point for point in points]
+    # layout_waveguide_from_points(TOP, layer, points_, 0.5, 5)
+
+    # # Tapered
+    # origin = 40 * ex + 40 * ey
+    # points_ = [origin + point for point in points]
+    # layout_waveguide_from_points(TOP, layer, points_, 0.5, 5, taper_width=3, taper_length=10)
+
+
+    # Stress test about ClearanceRewind when forward would work.
+    origin = 40 * ex + 80 * ey
     points = [
         0 * ex,
-        100 * ex,
-        100 * ex + 20 * ey,
-        10 * ex + 5 * ey,
-        10 * ex + 25 * ey,
-        100 * ex + 30 * ey,
+        222 * ey,
+        20 * ex + 222 * ey,
+        20 * ex + 371 * ey,
     ]
-
-    # Untapered
-    origin = 40 * ex
     points_ = [origin + point for point in points]
-    layout_waveguide_from_points(TOP, layer, points_, 0.5, 5)
+    layout_waveguide_from_points(TOP, layer, points_, 5, 500)
 
-    # Tapered
-    origin = 40 * ex + 40 * ey
+    # Stress test on trying forward first after ClearanceRewind.
+
+    origin = 60 * ex + 80 * ey
+    points = [
+        0 * ex,
+        222 * ey,
+        231 * ex + 222 * ey,
+        231 * ex + 460 * ey,
+    ]
     points_ = [origin + point for point in points]
-    layout_waveguide_from_points(TOP, layer, points_, 0.5, 5, taper_width=3, taper_length=10)
+    # breakpoint()
+    layout_waveguide_from_points(TOP, layer, points_, 5, 230)
 
     print("Wrote waveguide_rounding.gds")
     TOP.write("waveguide_rounding.gds")
