@@ -15,6 +15,7 @@ import numpy as np
 from numpy import cos, sin, pi, sqrt
 from functools import reduce
 from zeropdk.layout.geometry import curve_length, cross_prod, find_arc
+from zeropdk.exceptions import ZeroPDKUserError
 
 import klayout.db as pya
 
@@ -32,7 +33,7 @@ def _remove_duplicates(point_tuple_list: List[Tuple[pya.DPoint, ...]]) -> List[T
     unique_points = [point_tuple_list[0]]
     previous_point = point_tuple_list[0]
     for p_tuple in point_tuple_list[1:]:
-        if (p_tuple[0] - previous_point[0]):
+        if (p_tuple[0] - previous_point[0]).norm() > 0:
             unique_points.append(p_tuple)
             previous_point = p_tuple
 
@@ -105,6 +106,9 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
     # problems for the algorithm below.
     point_width_list = _remove_duplicates(point_width_list)
     N = len(point_width_list)
+
+    if N < 2:
+        raise ZeroPDKUserError("Error: Attempted to layout a zero-length waveguide.")
 
     first_point, first_width = point_width_list[0]
     next_point, next_width = point_width_list[1]
