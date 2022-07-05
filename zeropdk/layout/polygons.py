@@ -47,7 +47,7 @@ def rectangle(center, width, height, ex, ey):
     """
 
     if cross_prod(ex, ey) == 0:
-        raise RuntimeError("ex={} and ey={} are not orthogonal.".format(repr(ex), repr(ey)))
+        raise RuntimeError(f"ex={repr(ex)} and ey={repr(ey)} are not orthogonal.")
 
     point1 = center - width / 2 * ex - height / 2 * ey
     point3 = center + width / 2 * ex + height / 2 * ey

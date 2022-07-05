@@ -131,11 +131,7 @@ else:
             mask = np.ones([len(x_2) - 1], dtype=bool)
         else:
             # represent the data as a path in N dimensions (scaled to unit box)
-            if sample_transform is not None:
-                y_2_val = sample_transform(x_2, y_2)
-            else:
-                y_2_val = y_2
-
+            y_2_val = sample_transform(x_2, y_2) if sample_transform is not None else y_2
             p = np.r_[
                 "0",
                 x_2[None, :],

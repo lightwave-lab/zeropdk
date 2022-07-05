@@ -1,4 +1,5 @@
 """Caching algorithms for pcells."""
+
 import os
 import inspect
 import pickle
@@ -11,7 +12,7 @@ import klayout.db as pya
 from zeropdk.pcell import PCell
 
 logger = logging.getLogger(__name__)
-layer_map_dict: Dict[Type[pya.Layout], Type[pya.LayerMap]] = dict()
+layer_map_dict: Dict[Type[pya.Layout], Type[pya.LayerMap]] = {}
 CACHE_ACTIVATED = os.environ.get("ZEROPDK_CACHE_ACTIVATED", "true") == "true"
 CACHE_DIR = os.environ.get("ZEROPDK_CACHE_DIR", os.path.join(os.getcwd(), "cache"))
 CACHE_PROP_ID = 458
@@ -35,8 +36,7 @@ def produce_hash(self: Type[PCell], extra: Any = None) -> str:
     long_hash_pcell = sha256(
         (source_code + str_diff_params + self.name + str(extra)).encode()
     ).hexdigest()
-    short_hash_pcell = long_hash_pcell[0:7]
-    return short_hash_pcell
+    return long_hash_pcell[:7]
 
 
 def read_layout(layout: Type[pya.Layout], gds_filename: str, disambiguation_name: str = ""):
@@ -52,7 +52,7 @@ def read_layout(layout: Type[pya.Layout], gds_filename: str, disambiguation_name
     # (by setting the cell name to "" the cells basically become invisible for
     # the following read)
     # take out the pcells
-    cell_list = [cell for cell in layout.each_cell()]
+    cell_list = list(layout.each_cell())
     cell_indices = {cell.name: cell.cell_index() for cell in cell_list}
 
     # this assumes that there are no duplicate names, which is true in gds (let's assert)
@@ -85,14 +85,12 @@ def read_layout(layout: Type[pya.Layout], gds_filename: str, disambiguation_name
     # - if there is a duplicate even with the disambiguated name, add a counter
 
     if disambiguation_name != "":
-        disambiguation_name = (
-            "_" + disambiguation_name
-        )  # new cell name will be duplicate_name_disambiguation_name
+        disambiguation_name = f"_{disambiguation_name}"
 
     prune_cells_indices = []
     used_cell_names = list(cell_indices.keys())
     for i_duplicate, name_cached_cell in cell_names2:
-        if name_cached_cell in cell_indices.keys():
+        if name_cached_cell in cell_indices:
             if name_cached_cell.startswith("cache_") or (name_cached_cell in cache_set):
                 # cell_indices[name_cached_cell] contains a reference to the "original" cell
                 # we want to find every instance to duplicates (layout.cell(i_duplicate))
@@ -114,7 +112,7 @@ def read_layout(layout: Type[pya.Layout], gds_filename: str, disambiguation_name
                 used_cell_names.append(name_cached_cell + disambiguation_name + f"_{k}")
 
     for i_pruned in prune_cells_indices:
-        logger.debug("WARNING: deleting cell " + layout.cell(i_pruned).name)
+        logger.debug(f"WARNING: deleting cell {layout.cell(i_pruned).name}")
         layout.prune_cell(i_pruned, -1)
 
     # every conflict should have been caught above
@@ -178,8 +176,8 @@ def cache_cell(
 
             # cache paths
             cache_fname = f"cache_{self.__class__.__qualname__}_{short_hash_pcell}"
-            cache_fname_gds = cache_fname + ".gds"
-            cache_fname_pkl = cache_fname + ".klayout.pkl"
+            cache_fname_gds = f"{cache_fname}.gds"
+            cache_fname_pkl = f"{cache_fname}.klayout.pkl"
 
             os.makedirs(cache_dir, mode=0o775, exist_ok=True)
 
@@ -196,14 +194,7 @@ def cache_cell(
                 print("r", end="", flush=True)
                 if not layout.has_cell(cache_fname):
                     read_layout(layout, cache_fpath_gds, disambiguation_name=cellname)
-                retrieved_cell = layout.cell(cache_fname)
-                cell.insert(
-                    pya.DCellInstArray(
-                        retrieved_cell.cell_index(),
-                        pya.DTrans(pya.DTrans.R0, pya.DPoint(0, 0)),
-                    )
-                )
-                # cell.move_tree(retrieved_cell)
+                    # cell.move_tree(retrieved_cell)
             else:
                 if layout.has_cell(cache_fname):
                     logger.warning(
@@ -236,14 +227,13 @@ def cache_cell(
                 assert not layout.has_cell(cache_fname)
 
                 read_layout(layout, cache_fpath_gds, disambiguation_name=cellname)
-                retrieved_cell = layout.cell(cache_fname)
-                cell.insert(
-                    pya.DCellInstArray(
-                        retrieved_cell.cell_index(),
-                        pya.DTrans(pya.DTrans.R0, pya.DPoint(0, 0)),
-                    )
+            retrieved_cell = layout.cell(cache_fname)
+            cell.insert(
+                pya.DCellInstArray(
+                    retrieved_cell.cell_index(),
+                    pya.DTrans(pya.DTrans.R0, pya.DPoint(0, 0)),
                 )
-
+            )
             return cell, ports
 
         return wrapper_draw

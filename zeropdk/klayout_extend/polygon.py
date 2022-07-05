@@ -53,17 +53,15 @@ def patch_simple_polygon(backend):
             def intersect_left_boundary(p1, p2, x_bounds, y_bounds):
                 left_most, right_most = (p1, p2) if p1.x < p2.x else (p2, p1)
                 bottom_most, top_most = (p1, p2) if p1.y < p2.y else (p2, p1)
-                if left_most.x < x_bounds[0]:
-                    # intersection only if right_most crosses x_bound[0]
-                    if right_most.x > x_bounds[0]:
-                        # outside the box, on the left
-                        y_intersect = np.interp(
-                            x_bounds[0],
-                            [left_most.x, right_most.x],
-                            [left_most.y, right_most.y],
-                        )
-                        if y_bounds[0] < y_intersect and y_bounds[1] > y_intersect:
-                            return backend.DPoint(float(x_bounds[0]), float(y_intersect))
+                if left_most.x < x_bounds[0] and right_most.x > x_bounds[0]:
+                    # outside the box, on the left
+                    y_intersect = np.interp(
+                        x_bounds[0],
+                        [left_most.x, right_most.x],
+                        [left_most.y, right_most.y],
+                    )
+                    if y_bounds[0] < y_intersect and y_bounds[1] > y_intersect:
+                        return backend.DPoint(float(x_bounds[0]), float(y_intersect))
                 return None
 
             def intersect(p1, p2, x_bounds, y_bounds):
@@ -71,7 +69,7 @@ def patch_simple_polygon(backend):
                 last_intersect = None
 
                 def rotate_bounds90(x_bounds, y_bounds, i_times):
-                    for i in range(i_times):
+                    for _ in range(i_times):
                         x_bounds, y_bounds = (
                             (-y_bounds[1], -y_bounds[0]),
                             (x_bounds[0], x_bounds[1]),
@@ -172,10 +170,7 @@ def patch_simple_polygon(backend):
                 for i in range(len(points)):
                     delta = points[i] - points[i - 1]
                     angle = np.arctan2(delta.y, delta.x)
-                    if delta.y == 0 or delta.x == 0:
-                        thresh_angle = pi / 2
-                    else:
-                        thresh_angle = pi * 85 / 180
+                    thresh_angle = pi / 2 if delta.y == 0 or delta.x == 0 else pi * 85 / 180
                     delta_angle = angle - prev_angle
                     delta_angle = abs(((delta_angle + pi) % (2 * pi)) - pi)
                     if delta_angle > thresh_angle:
