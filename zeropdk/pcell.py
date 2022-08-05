@@ -475,6 +475,34 @@ class PCell:
             transform_into=transform_into,
         )
 
+    def to_gdsfactory(self, tempfile="./temp.gds"):
+        """Converts the PCell to a gdsfactory Component (https://github.com/gdsfactory/gdsfactory)
+        Useful to access gdsfactory features such as simulation, rendering, etc.
+
+        Returns:
+            Component
+        """
+
+        # Import gdsfactory here to avoid it being a prereq
+        import gdsfactory as gf
+        import klayout.db as pya
+
+        # Hack: write zeropdk pcell to gds, and load in gdsfactory as static gds
+        layout = pya.Layout()
+        TOP = layout.create_cell("TOP")
+
+        origin = pya.DPoint(0, 0)
+        ex = pya.DVector(1, 0)
+        ey = pya.DVector(0, 1)
+
+        self.place_cell(TOP, origin)
+
+        layout.write(tempfile)
+        c = gf.import_gds(gdspath=tempfile)
+        os.remove(tempfile) 
+        return c
+
+
 _zeropdk_cache_store = dict()
 
 def GDSCell(cell_name: str, filename: str, gds_dir: str):
