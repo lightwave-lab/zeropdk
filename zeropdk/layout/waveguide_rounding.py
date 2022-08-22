@@ -50,7 +50,7 @@ def intersect(A, eA, B, eB):
 
 @lru_cache(maxsize=5)
 def _min_clearance(angle_rad, radius):
-    """ Compute the minimum clearance for a tangent arc given an vertex angle."""
+    """Compute the minimum clearance for a tangent arc given an vertex angle."""
     try:
         return abs(radius / tan(angle_rad / 2))
     except ZeroDivisionError:
@@ -438,7 +438,7 @@ def compute_rounded_path(points, radius):
 
 
 class _Path:
-    """ Object holding path plus width information"""
+    """Object holding path plus width information"""
 
     def __init__(self, points, widths):
         self.points = points

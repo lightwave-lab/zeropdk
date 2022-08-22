@@ -119,7 +119,7 @@ class DCPadArray(DCPad):
         cp = self.params
         origin, ex, _ = self.origin_ex_ey()
 
-        ports = dict()
+        ports = {}
 
         for i in range(cp.pad_array_count):
             dcpad = DCPad(name=f"pad_{i}", params=cp)

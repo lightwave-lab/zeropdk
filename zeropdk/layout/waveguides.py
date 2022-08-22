@@ -142,7 +142,7 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
         # and the width has to be bigger than the smallest distance between
         # two points.
 
-        is_small = (min(delta_next.norm(), delta_prev.norm()) < width)
+        is_small = min(delta_next.norm(), delta_prev.norm()) < width
         is_arc = cos_angle(delta_next, delta_prev) > cos(30 * pi / 180)
         is_arc = is_arc and is_small
         center_arc, radius = find_arc(prev_point, point, next_point)
@@ -253,16 +253,15 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
 
             # Only add new point if the area of the triangle built with
             # current edge and previous edge is greater than dbu^2/2
-            if abs(cross_prod(prev_edge, curr_edge)) > dbu ** 2 / 2:
+            if abs(cross_prod(prev_edge, curr_edge)) > dbu**2 / 2:
                 if smooth:
                     # avoid corners when smoothing
                     if cos_angle(curr_edge, prev_edge) > cos(130 / 180 * pi):
                         point_list.append(point)
-                    else:
+                    elif norm(curr_edge) > norm(prev_edge):
                         # edge case when there is prev_edge is small and
                         # needs to be deleted to get rid of the corner
-                        if norm(curr_edge) > norm(prev_edge):
-                            point_list[-1] = point
+                        point_list[-1] = point
                 else:
                     point_list.append(point)
             # avoid unnecessary points

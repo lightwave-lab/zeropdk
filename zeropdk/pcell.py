@@ -1,10 +1,11 @@
 """PCell definitions that improve upon Klayout pcells."""
 
+from collections import defaultdict
 import os
 import warnings
 import logging
 from copy import copy, deepcopy
-from typing import Dict, List, Tuple, Any, Optional
+from typing import Dict, List, Tuple, Any, Optional, Type
 from collections.abc import Mapping, MutableMapping
 
 import klayout.db as kdb
@@ -75,7 +76,7 @@ class PCellParameter:
         return repr(self)
 
     def parse(self, value):
-        """ Makes sure that the value is of a certain type"""
+        """Makes sure that the value is of a certain type"""
         if self.type is None:
             new_type = type(value)
             self.type = new_type
@@ -147,7 +148,7 @@ class objectview(MutableMapping):
         return self.__add__(other)
 
     def __repr__(self):
-        return "objectview({})".format(repr(self.orig_d))
+        return f"objectview({repr(self.orig_d)})"
 
 
 # https://stackoverflow.com/questions/3387691/how-to-perfectly-override-a-dict
@@ -176,8 +177,8 @@ class ParamContainer(Mapping):
         2. ParamContainer(param1, param2, param3, ...), where param is of type
             PCellParameter
         """
-        self._container = dict()
-        self._current_values = dict()
+        self._container = {}
+        self._current_values = {}
 
         if len(args) == 1 and isinstance(args[0], ParamContainer):
             param_container = args[0]
@@ -206,18 +207,17 @@ class ParamContainer(Mapping):
         return value
 
     def __setattr__(self, name, new_value):
-        """ Set a parameter instead of an instance attribute."""
+        """Set a parameter instead of an instance attribute."""
 
         protected_list = ("_container", "_current_values")
         if name in protected_list:
             return super().__setattr__(name, new_value)
-        else:
-            param_def = self._container[name]
-            try:
-                parsed_value = param_def.parse(new_value)
-            except TypeError:
-                raise
-            self._current_values[name] = parsed_value
+        param_def = self._container[name]
+        try:
+            parsed_value = param_def.parse(new_value)
+        except TypeError:
+            raise
+        self._current_values[name] = parsed_value
 
     def merge(self, other):
         if not isinstance(other, ParamContainer):
@@ -245,7 +245,7 @@ class ParamContainer(Mapping):
 
 
 class Port(object):
-    """ Defines a port object """
+    """Defines a port object"""
 
     def __init__(self, name, position, direction, width, port_type=None):
         self.name: str = name
@@ -477,9 +477,11 @@ class PCell:
             transform_into=transform_into,
         )
 
-_zeropdk_cache_store = dict()
 
-def GDSCell(cell_name: str, filename: str, gds_dir: str) -> PCell:
+_zeropdk_cache_store: Dict[Tuple[str, str, str], Dict[Tuple[str, str, kdb.Layout], kdb.Cell]] = defaultdict(dict)
+
+
+def GDSCell(cell_name: str, filename: str, gds_dir: str) -> Type[PCell]:
     """
     Args:
         cell_name: cell within that file.
@@ -496,10 +498,10 @@ def GDSCell(cell_name: str, filename: str, gds_dir: str) -> PCell:
         warnings.warn(f"Warning while creating GDSCell for cell name '{cell_name}': '{filename}' not found in '{gds_dir}'", category=ZeroPDKWarning)
 
     class GDS_cell_base(PCell):
-        """ Imports a gds file and places it."""
+        """Imports a gds file and places it."""
 
         # If we call GDSCell with the same parameters, we want the same cache.
-        _cell_cache = _zeropdk_cache_store.setdefault((cell_name, filename, gds_dir), dict())
+        _cell_cache = _zeropdk_cache_store[(cell_name, filename, gds_dir)]
         _gds_cell_name = cell_name
 
         def __init__(self, name=cell_name, params=None):
@@ -522,8 +524,11 @@ def GDSCell(cell_name: str, filename: str, gds_dir: str) -> PCell:
                 new_cell_name = gdscell.name
 
                 # Add this cell to the list of cells that cannot be deduplicated
-                from zeropdk.layout.cache import CACHE_PROP_ID  # pylint: disable=import-outside-toplevel
-                cache_set = set([new_cell_name])
+                from zeropdk.layout.cache import (
+                    CACHE_PROP_ID,
+                )  # pylint: disable=import-outside-toplevel
+
+                cache_set = {new_cell_name}
                 if layout.property(CACHE_PROP_ID) is not None:
                     cache_set |= set(layout.property(CACHE_PROP_ID).split(","))
                 layout.set_property(CACHE_PROP_ID, ",".join(cache_set))
