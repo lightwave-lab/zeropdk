@@ -63,16 +63,12 @@ def project(v, ex, ey=None):
         ey = rotate90(ex)
 
     if cross_prod(ex, ey) == 0:
-        raise RuntimeError("ex={} and ey={} are not orthogonal.".format(repr(ex), repr(ey)))
+        raise RuntimeError(f"ex={repr(ex)} and ey={repr(ey)} are not orthogonal.")
 
-    # Simple formula
-    # https://math.stackexchange.com/questions/148199/equation-for-non-orthogonal-projection-of-a-point-onto-two-vectors-representing
-
-    a = cross_prod(ey, v) / cross_prod(ey, ex)
     # b = cross_prod(ex, v) / cross_prod(ex, ey)
 
     # v == a * ex + b * ey
-    return a
+    return cross_prod(ey, v) / cross_prod(ey, ex)
 
 
 def curve_length(curve, t0=0, t1=1):
@@ -86,27 +82,23 @@ def curve_length(curve, t0=0, t1=1):
     if isinstance(curve, list):
         # assuming curve is a list of points
         scale = (curve[-1] - curve[0]).norm()
-        if scale > 0:
-            coords = np.array([[point.x, point.y] for point in curve]).T
-            dp = np.diff(coords, axis=-1)
-            ds = np.sqrt((dp ** 2).sum(axis=0))
-            return ds.sum()
-        else:
+        if scale <= 0:
             return 0
+        coords = np.array([[point.x, point.y] for point in curve]).T
+        dp = np.diff(coords, axis=-1)
     else:
         # assuming curve is a function.
         curve_func = curve
         scale = (curve_func(t1) - curve_func(t0)).norm()
-        if scale > 0:
-            coords = lambda t: np.array([curve_func(t).x, curve_func(t).y])
-            _, sampled_coords = sample_function(
-                coords, [t0, t1], tol=0.0001 / scale, min_points=100
-            )  # 1000 times more precise than the scale
-            dp = np.diff(sampled_coords, axis=-1)
-            ds = np.sqrt((dp ** 2).sum(axis=0))
-            return ds.sum()
-        else:
+        if scale <= 0:
             return 0
+        coords = lambda t: np.array([curve_func(t).x, curve_func(t).y])
+        _, sampled_coords = sample_function(
+            coords, [t0, t1], tol=0.0001 / scale, min_points=100
+        )  # 1000 times more precise than the scale
+        dp = np.diff(sampled_coords, axis=-1)
+    ds = np.sqrt((dp ** 2).sum(axis=0))
+    return ds.sum()
 
 
 def manhattan_intersection(vertical_point, horizontal_point, ex):
@@ -131,11 +123,7 @@ def find_Z_orientation(P0, P1, ex):
         0 for Z-oriented and 1 for S-oriented
 
     """
-    if P1 * ex > P0 * ex:
-        orient = 0  # Z-oriented
-    else:
-        orient = 1  # S-oriented
-    return orient
+    return 0 if P1 * ex > P0 * ex else 1
 
 
 def cluster_ports(ports_from, ports_to, ex):
@@ -203,13 +191,7 @@ def bezier_line(P0, P1, P2, P3):
     Reference
         https://en.wikipedia.org/wiki/Bézier_curve"""
 
-    curve_func = (
-        lambda t: (1 - t) ** 3 * P0
-        + 3 * (1 - t) ** 2 * t * P1
-        + 3 * (1 - t) * t ** 2 * P2
-        + t ** 3 * P3
-    )
-    return curve_func
+    return lambda t: (1 - t) ** 3 * P0 + 3 * (1 - t) ** 2 * t * P1 + 3 * (1 - t) * t**2 * P2 + t**3 * P3
 
 
 def curvature_bezier(P0, P1, P2, P3):
@@ -232,8 +214,7 @@ def curvature_bezier(P0, P1, P2, P3):
     dy = lambda t: b_prime(t).y
     ddx = lambda t: b_second(t).x
     ddy = lambda t: b_second(t).y
-    curv_func = lambda t: (dx(t) * ddy(t) - dy(t) * ddx(t)) / (dx(t) ** 2 + dy(t) ** 2) ** (3 / 2)
-    return curv_func
+    return lambda t: (dx(t) * ddy(t) - dy(t) * ddx(t)) / (dx(t) ** 2 + dy(t) ** 2) ** (3 / 2)
 
 
 from scipy.optimize import minimize
@@ -243,8 +224,7 @@ def max_curvature(P0, P1, P2, P3):
     """Gets the maximum curvature of Bezier curve"""
     t = np.linspace(0, 1, 300)
     curv = curvature_bezier(P0, P1, P2, P3)(t)
-    max_curv = np.max(np.abs(curv.flatten()))
-    return max_curv
+    return np.max(np.abs(curv.flatten()))
 
 
 def _curvature_penalty(P0, P1, P2, P3):
@@ -256,10 +236,7 @@ def _curvature_penalty(P0, P1, P2, P3):
     curv_initial = curv[0]
     curv_final = curv[-1]
 
-    # this will cause the minimum curvature to be about 4 times lower
-    # than at the origin and end points.
-    penalty = max_curv + 2 * (curv_initial + curv_final)
-    return penalty
+    return max_curv + 2 * (curv_initial + curv_final)
 
 
 def fix_angle(angle):
@@ -318,7 +295,7 @@ class _Point(object):
         return self.x == other.x and self.y == other.y
 
     def __str__(self):
-        return "Point({}, {})".format(self.x, self.y)
+        return f"Point({self.x}, {self.y})"
 
     def norm(self):
         return sqrt(self.x ** 2 + self.y ** 2)

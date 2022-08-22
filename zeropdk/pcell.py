@@ -145,7 +145,7 @@ class objectview(MutableMapping):
         return self.__add__(other)
 
     def __repr__(self):
-        return "objectview({})".format(repr(self.orig_d))
+        return f"objectview({repr(self.orig_d)})"
 
 
 # https://stackoverflow.com/questions/3387691/how-to-perfectly-override-a-dict
@@ -174,8 +174,8 @@ class ParamContainer(Mapping):
         2. ParamContainer(param1, param2, param3, ...), where param is of type
             PCellParameter
         """
-        self._container = dict()
-        self._current_values = dict()
+        self._container = {}
+        self._current_values = {}
 
         if len(args) == 1 and isinstance(args[0], ParamContainer):
             param_container = args[0]
@@ -209,13 +209,12 @@ class ParamContainer(Mapping):
         protected_list = ("_container", "_current_values")
         if name in protected_list:
             return super().__setattr__(name, new_value)
-        else:
-            param_def = self._container[name]
-            try:
-                parsed_value = param_def.parse(new_value)
-            except TypeError:
-                raise
-            self._current_values[name] = parsed_value
+        param_def = self._container[name]
+        try:
+            parsed_value = param_def.parse(new_value)
+        except TypeError:
+            raise
+        self._current_values[name] = parsed_value
 
     def merge(self, other):
         if not isinstance(other, ParamContainer):
@@ -235,7 +234,7 @@ class ParamContainer(Mapping):
 
     def __iter__(self):
         values_dict = {p.name: p.default for p in self._container.values()}
-        values_dict.update(self._current_values)
+        values_dict |= self._current_values
         return iter(values_dict)
 
     def __len__(self):
@@ -475,7 +474,7 @@ class PCell:
             transform_into=transform_into,
         )
 
-_zeropdk_cache_store = dict()
+_zeropdk_cache_store = {}
 
 def GDSCell(cell_name: str, filename: str, gds_dir: str):
     """
@@ -518,7 +517,7 @@ def GDSCell(cell_name: str, filename: str, gds_dir: str):
 
                 # Add this cell to the list of cells that cannot be deduplicated
                 from zeropdk.layout.cache import CACHE_PROP_ID  # pylint: disable=import-outside-toplevel
-                cache_set = set([new_cell_name])
+                cache_set = {new_cell_name}
                 if layout.property(CACHE_PROP_ID) is not None:
                     cache_set |= set(layout.property(CACHE_PROP_ID).split(","))
                 layout.set_property(CACHE_PROP_ID, ",".join(cache_set))
@@ -554,11 +553,7 @@ def port_to_pin_helper(
     dbu = cell.layout().dbu
 
     for port in ports_list:
-        if port.name.startswith("el"):
-            pin_length = port.width
-        else:
-            pin_length = PIN_LENGTH * dbu
-
+        pin_length = port.width if port.name.startswith("el") else PIN_LENGTH * dbu
         port_position_i = port.position.to_itype(dbu)
         cell.shapes(layerPinRec).insert(
             kdb.DPath(

@@ -50,8 +50,7 @@ def pyaPoint__truediv__(self, dividend):
 
 
 def pyaPoint__deepcopy__(self, memo):
-    new_point = self.__class__(self.x, self.y)
-    return new_point
+    return self.__class__(self.x, self.y)
 
 
 def pyaPoint_norm(self):
@@ -73,9 +72,7 @@ def pyaPoint__init__(self, *args):
                 self.x = p.x
                 self.y = p.y
             except:
-                raise ValueError("Cannot understand {}".format(p))
-    except:
-        raise ValueError("Unknown constructor")
+                raise ValueError(f"Cannot understand {p}")
 
 
 def pyaPoint__getstate__(self):
