@@ -10,7 +10,7 @@ from zeropdk.layout.geometry import rotate, fix_angle, cross_prod
 from zeropdk.layout.algorithms.sampling import sample_function
 from zeropdk.layout.polygons import layout_path
 from zeropdk.layout.waveguides import layout_waveguide
-from zeropdk import ZeroPDKUserError, ZeroPDKWarning
+from zeropdk.exceptions import ZeroPDKUserError, ZeroPDKWarning
 
 def angle_between(v1, v0):
     """Compute angle in radians between v1 and v0.
