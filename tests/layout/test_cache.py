@@ -56,7 +56,7 @@ class EmptyPCell(PCell): # type: ignore
 
 @pytest.fixture
 def top_cell():
-    rmtree(CACHE_DIR)
+    rmtree(CACHE_DIR, ignore_errors=True)
     def _top_cell():
         layout = kdb.Layout()
         layout.dbu = 0.001
