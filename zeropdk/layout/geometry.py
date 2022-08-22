@@ -1,7 +1,7 @@
 import logging
 import os
 from functools import lru_cache, partial
-from typing import Tuple
+from typing import Callable, Tuple
 import numpy as np
 from scipy.interpolate import interp2d
 from zeropdk.layout.algorithms.sampling import sample_function
@@ -337,7 +337,7 @@ class _Line(_Point):
 
 
 @lru_cache(maxsize=128)
-def _bezier_optimal(angle0: float, angle3: float) -> Tuple[float, float]:
+def _original_bezier_optimal(angle0: float, angle3: float) -> Tuple[float, float]:
     """This is a reduced problem of the bézier connection.
 
     Args:
@@ -425,7 +425,6 @@ def _bezier_optimal(angle0: float, angle3: float) -> Tuple[float, float]:
 
 pwd = os.path.dirname(os.path.realpath(__file__))
 bezier_optimal_fpath = os.path.join(pwd, "bezier_optimal.npz")
-_original_bezier_optimal = _bezier_optimal
 
 
 def memoized_bezier_optimal(angle0: float, angle3: float, file: str) -> Tuple[float, float]:
@@ -439,13 +438,16 @@ def memoized_bezier_optimal(angle0: float, angle3: float, file: str) -> Tuple[fl
         a = interp2d(x, y, z_a)(angle0, angle3)[0]
         b = interp2d(x, y, z_b)(angle0, angle3)[0]
         return a, b
-    except:
+    except Exception:
         logger.error(f"Optimal Bezier interpolation has failed for angles({angle0}, {angle3}).")
         return _original_bezier_optimal(angle0, angle3)
 
+_bezier_optimal: Callable[[float, float], Tuple[float, float]]
 
 if os.path.isfile(bezier_optimal_fpath):
     _bezier_optimal = partial(memoized_bezier_optimal, file=bezier_optimal_fpath)
+else:
+    _bezier_optimal = _original_bezier_optimal
 
 
 def bezier_optimal(P0, P3, angle0: float, angle3: float):
@@ -468,7 +470,7 @@ def bezier_optimal(P0, P3, angle0: float, angle3: float):
         P1 = a * scaling * _Point(np.cos(angle0), np.sin(angle0)) + P0
         P2 = P3 - b * scaling * _Point(np.cos(angle3), np.sin(angle3))
         curve_func = bezier_line(P0, P1, P2, P3)
-        with np.errstate(divide="ignore"):
+        with np.errstate(divide="ignore"): # type: ignore
             # warn if minimum radius is smaller than 3um
             min_radius = np.true_divide(1, max_curvature(P0, P1, P2, P3))
             if min_radius < 3:
@@ -490,7 +492,7 @@ try:
 
     _bezier_optimal_pure = bezier_optimal
 
-    def bezier_optimal(P0, P3, *args, **kwargs):
+    def bezier_optimal(P0, P3, angle0: float, angle3: float):
         """If inside KLayout, return computed list of KLayout points."""
         P0 = _Point(P0.x, P0.y)
         P3 = _Point(P3.x, P3.y)
@@ -499,7 +501,7 @@ try:
         #     scale /= 1000
         # This function returns a np.array of Points.
         # We need to convert to array of Point coordinates
-        new_bezier_line = _bezier_optimal_pure(P0, P3, *args, **kwargs)
+        new_bezier_line = _bezier_optimal_pure(P0, P3, angle0, angle3)
         bezier_point_coordinates = lambda t: np.array([new_bezier_line(t).x, new_bezier_line(t).y])
 
         t_sampled, bezier_point_coordinates_sampled = sample_function(

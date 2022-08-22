@@ -1,10 +1,11 @@
 """PCell definitions that improve upon Klayout pcells."""
 
+from collections import defaultdict
 import os
 import warnings
 import logging
 from copy import copy, deepcopy
-from typing import Dict, List, Tuple, Any, Optional
+from typing import Dict, List, Tuple, Any, Optional, Type
 from collections.abc import Mapping, MutableMapping
 
 import klayout.db as kdb
@@ -477,10 +478,10 @@ class PCell:
         )
 
 
-_zeropdk_cache_store = {}
+_zeropdk_cache_store: Dict[Tuple[str, str, str], Dict[Tuple[str, str, kdb.Layout], kdb.Cell]] = defaultdict(dict)
 
 
-def GDSCell(cell_name: str, filename: str, gds_dir: str) -> PCell:
+def GDSCell(cell_name: str, filename: str, gds_dir: str) -> Type[PCell]:
     """
     Args:
         cell_name: cell within that file.
@@ -500,7 +501,7 @@ def GDSCell(cell_name: str, filename: str, gds_dir: str) -> PCell:
         """Imports a gds file and places it."""
 
         # If we call GDSCell with the same parameters, we want the same cache.
-        _cell_cache = _zeropdk_cache_store.setdefault((cell_name, filename, gds_dir), dict())
+        _cell_cache = _zeropdk_cache_store[(cell_name, filename, gds_dir)]
         _gds_cell_name = cell_name
 
         def __init__(self, name=cell_name, params=None):
