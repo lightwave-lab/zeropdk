@@ -10,15 +10,34 @@ TODO: make some of the functions in util use these.
 """
 
 from itertools import repeat
+from typing import List, Tuple
 import numpy as np
 from numpy import cos, sin, pi, sqrt
 from functools import reduce
 from zeropdk.layout.geometry import curve_length, cross_prod, find_arc
+from zeropdk.exceptions import ZeroPDKUserError
 
 import klayout.db as pya
 
 debug = False
 
+def norm(self):
+    return self.norm()
+
+def _remove_duplicates(point_tuple_list: List[Tuple[pya.DPoint, ...]]) -> List[Tuple[pya.DPoint, ...]]:
+    """ Iterates through point_tuple_list and deletes entries with consecutive duplicate points."""
+
+    if len(point_tuple_list) < 2:
+        return point_tuple_list
+
+    unique_points = [point_tuple_list[0]]
+    previous_point = point_tuple_list[0]
+    for p_tuple in point_tuple_list[1:]:
+        if (p_tuple[0] - previous_point[0]).norm() > 0:
+            unique_points.append(p_tuple)
+            previous_point = p_tuple
+
+    return unique_points
 
 def waveguide_dpolygon(points_list, width, dbu, smooth=True):
     """Returns a polygon outlining a waveguide.
@@ -29,7 +48,9 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
 
     Args:
         points_list: list of pya.DPoint (at least 2 points)
-        width (microns): constant or list. If list, then it has to have the same length as points
+        width (microns): constant, 2-element list, or list.
+            If 2-element list, then widths are interpolated alongside the waveguide.
+            If list, then it has to either have the same length as points.
         dbu: dbu: typically 0.001, only used for accuracy calculations.
         smooth: tries to smooth final polygons to avoid very sharp edges (greater than 130 deg)
     Returns:
@@ -37,11 +58,8 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
 
     """
     if len(points_list) < 2:
-        raise NotImplementedError("ERROR: points_list too short")
+        raise NotImplementedError("ERROR: Not enough points to draw a waveguide.")
         return
-
-    def norm(self):
-        return sqrt(self.x**2 + self.y**2)
 
     # Prepares a joint point and width iterators
     try:
@@ -84,7 +102,13 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
         return cross_prod(point1, point2) / norm(point1) / norm(point2)
 
     point_width_list = list(zip(points_iterator, width_iterator))
+    # Remove duplicate consecutive points here, because it would create
+    # problems for the algorithm below.
+    point_width_list = _remove_duplicates(point_width_list)
     N = len(point_width_list)
+
+    if N < 2:
+        raise ZeroPDKUserError("Error: Attempted to layout a zero-length waveguide.")
 
     first_point, first_width = point_width_list[0]
     next_point, next_width = point_width_list[1]
@@ -268,7 +292,9 @@ def layout_waveguide(cell, layer, points_list, width, smooth=False):
         cell: cell to place into
         layer: layer to place into. It is done with cell.shapes(layer).insert(pya.Polygon)
         points_list: list of pya.DPoint (at least 2 points)
-        width (microns): constant or list. If list, then it has to have the same length as points
+        width (microns): constant, 2-element list, or list.
+            If 2-element list, then widths are interpolated alongside the waveguide.
+            If list, then it has to either have the same length as points.
         smooth: tries to smooth final polygons to avoid very sharp edges (greater than 130 deg)
 
     """
@@ -291,7 +317,9 @@ def layout_waveguide_angle(cell, layer, points_list, width, angle):
         cell: cell to place into
         layer: layer to place into. It is done with cell.shapes(layer).insert(pya.Polygon)
         points_list: list of pya.DPoint (at least 2 points)
-        width (microns): constant or list. If list, then it has to have the same length as points
+        width (microns): constant, 2-element list, or list.
+            If 2-element list, then widths are interpolated alongside the waveguide.
+            If list, then it has to either have the same length as points.
         angle (degrees)
     """
     return layout_waveguide_angle2(cell, layer, points_list, width, angle, angle)
@@ -307,7 +335,9 @@ def layout_waveguide_angle2(cell, layer, points_list, width, angle_from, angle_t
         cell: cell to place into
         layer: layer to place into. It is done with cell.shapes(layer).insert(pya.Polygon)
         points_list: list of pya.DPoint (at least 2 points)
-        width (microns): constant or list. If list, then it has to have the same length as points
+        width (microns): constant, 2-element list, or list.
+            If 2-element list, then widths are interpolated alongside the waveguide.
+            If list, then it has to either have the same length as points.
         angle_from (degrees): normal angle of the first waveguide point
         angle_to (degrees): normal angle of the last waveguide point
 
@@ -315,9 +345,6 @@ def layout_waveguide_angle2(cell, layer, points_list, width, angle_from, angle_t
     if len(points_list) < 2:
         raise NotImplemented("ERROR: points_list too short")
         return
-
-    def norm(self):
-        return sqrt(self.x**2 + self.y**2)
 
     try:
         if len(width) == len(points_list):

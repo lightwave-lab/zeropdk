@@ -4,7 +4,7 @@ import os
 
 
 from ..context import zeropdk  # noqa
-from zeropdk import ZeroPDKWarning
+from zeropdk.exceptions import ZeroPDKWarning
 from zeropdk.pcell import PCell, PCellParameter, ParamContainer, TypeDouble, TypeInt
 from zeropdk.pcell import GDSCell
 

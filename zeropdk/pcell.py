@@ -9,7 +9,7 @@ from typing import Dict, List, Tuple, Any, Optional, Type
 from collections.abc import Mapping, MutableMapping
 
 import klayout.db as kdb
-from zeropdk import ZeroPDKWarning
+from zeropdk.exceptions import ZeroPDKWarning
 from zeropdk.layout.geometry import rotate90
 
 logger = logging.getLogger(__name__)
