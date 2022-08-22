@@ -151,7 +151,7 @@ def patch_simple_polygon(backend):
             return self
 
         def layout(self, cell, layer):
-            """ Places polygon as a shape into a cell at a particular layer."""
+            """Places polygon as a shape into a cell at a particular layer."""
             from zeropdk.layout import insert_shape
 
             return insert_shape(cell, layer, self)
@@ -194,7 +194,7 @@ def patch_simple_polygon(backend):
             dpoly = dpoly[0].to_dtype(dbu)  # backend.DPolygon
 
             def norm(p):
-                return sqrt(p.x ** 2 + p.y ** 2)
+                return sqrt(p.x**2 + p.y**2)
 
             # Filter edges if they are too small
             points = list(dpoly.each_point_hull())
@@ -209,7 +209,7 @@ def patch_simple_polygon(backend):
             return self
 
         def round_corners(self, radius, N):
-            """ This only works if the polygon edges are longer than the radius."""
+            """This only works if the polygon edges are longer than the radius."""
 
             dpoly = super().round_corners(radius, radius, N)
             self.assign(dpoly)

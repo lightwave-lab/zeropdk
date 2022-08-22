@@ -47,7 +47,9 @@ class Tech:
                 try:
                     layer_map[k["name"]] = layerInfo
                 except TypeError as e:
-                    new_message = f"Bad name for layer {layerInfo}. Check your .lyp XML file for errors."
+                    new_message = (
+                        f"Bad name for layer {layerInfo}. Check your .lyp XML file for errors."
+                    )
 
                     raise TypeError(new_message) from e
 

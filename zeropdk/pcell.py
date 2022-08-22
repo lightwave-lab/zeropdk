@@ -73,7 +73,7 @@ class PCellParameter:
         return repr(self)
 
     def parse(self, value):
-        """ Makes sure that the value is of a certain type"""
+        """Makes sure that the value is of a certain type"""
         if self.type is None:
             new_type = type(value)
             self.type = new_type
@@ -204,7 +204,7 @@ class ParamContainer(Mapping):
         return value
 
     def __setattr__(self, name, new_value):
-        """ Set a parameter instead of an instance attribute."""
+        """Set a parameter instead of an instance attribute."""
 
         protected_list = ("_container", "_current_values")
         if name in protected_list:
@@ -242,7 +242,7 @@ class ParamContainer(Mapping):
 
 
 class Port(object):
-    """ Defines a port object """
+    """Defines a port object"""
 
     def __init__(self, name, position, direction, width, port_type=None):
         self.name: str = name
@@ -276,7 +276,7 @@ class Port(object):
         return self
 
     def draw(self, cell, layer):
-        """ Draws this port on cell's layer using klayout.db"""
+        """Draws this port on cell's layer using klayout.db"""
         if self.name.startswith("el"):
             pin_length = self.width
         else:
@@ -474,7 +474,9 @@ class PCell:
             transform_into=transform_into,
         )
 
+
 _zeropdk_cache_store = {}
+
 
 def GDSCell(cell_name: str, filename: str, gds_dir: str):
     """
@@ -490,7 +492,7 @@ def GDSCell(cell_name: str, filename: str, gds_dir: str):
     assert gds_dir is not None
 
     class GDS_cell_base(PCell):
-        """ Imports a gds file and places it."""
+        """Imports a gds file and places it."""
 
         # If we call GDSCell with the same parameters, we want the same cache.
         _cell_cache = _zeropdk_cache_store.setdefault((cell_name, filename, gds_dir), dict())
@@ -516,7 +518,10 @@ def GDSCell(cell_name: str, filename: str, gds_dir: str):
                 new_cell_name = gdscell.name
 
                 # Add this cell to the list of cells that cannot be deduplicated
-                from zeropdk.layout.cache import CACHE_PROP_ID  # pylint: disable=import-outside-toplevel
+                from zeropdk.layout.cache import (
+                    CACHE_PROP_ID,
+                )  # pylint: disable=import-outside-toplevel
+
                 cache_set = {new_cell_name}
                 if layout.property(CACHE_PROP_ID) is not None:
                     cache_set |= set(layout.property(CACHE_PROP_ID).split(","))
@@ -546,7 +551,7 @@ def GDSCell(cell_name: str, filename: str, gds_dir: str):
 def port_to_pin_helper(
     ports_list: List[Type[Port]], cell: Type[kdb.Cell], layerPinRec: Type[kdb.LayerInfo]
 ):
-    """ Draws port shapes for visual help in KLayout. """
+    """Draws port shapes for visual help in KLayout."""
     # Create the pins, as short paths:
     # from siepic_tools.config import PIN_LENGTH
     PIN_LENGTH = 100

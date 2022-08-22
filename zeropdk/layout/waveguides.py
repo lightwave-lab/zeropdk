@@ -41,7 +41,7 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
         return
 
     def norm(self):
-        return sqrt(self.x ** 2 + self.y ** 2)
+        return sqrt(self.x**2 + self.y**2)
 
     # Prepares a joint point and width iterators
     try:
@@ -118,7 +118,7 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
         # and the width has to be bigger than the smallest distance between
         # two points.
 
-        is_small = (min(delta_next.norm(), delta_prev.norm()) < width)
+        is_small = min(delta_next.norm(), delta_prev.norm()) < width
         is_arc = cos_angle(delta_next, delta_prev) > cos(30 * pi / 180)
         is_arc = is_arc and is_small
         center_arc, radius = find_arc(prev_point, point, next_point)
@@ -229,7 +229,7 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
 
             # Only add new point if the area of the triangle built with
             # current edge and previous edge is greater than dbu^2/2
-            if abs(cross_prod(prev_edge, curr_edge)) > dbu ** 2 / 2:
+            if abs(cross_prod(prev_edge, curr_edge)) > dbu**2 / 2:
                 if smooth:
                     # avoid corners when smoothing
                     if cos_angle(curr_edge, prev_edge) > cos(130 / 180 * pi):
@@ -317,7 +317,7 @@ def layout_waveguide_angle2(cell, layer, points_list, width, angle_from, angle_t
         return
 
     def norm(self):
-        return sqrt(self.x ** 2 + self.y ** 2)
+        return sqrt(self.x**2 + self.y**2)
 
     try:
         if len(width) == len(points_list):

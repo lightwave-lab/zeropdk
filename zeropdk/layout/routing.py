@@ -106,7 +106,7 @@ def common_layout_manhattan_traces(
 
         points_list.append(point)  # store points
         widths_list.append(width)
-        if layer != previous_layer: # time to place a via and layout
+        if layer != previous_layer:  # time to place a via and layout
             layout_waveguide(
                 cell,
                 ensure_layer(layout, previous_layer),
@@ -145,7 +145,7 @@ def layout_manhattan_traces(cell, path, ex):
 
 
 def connect_ports_L(cell, cplayer, ports_from, ports_to, ex):
-    """ Connects ports ports_from to ports_to, always leaving vertically"""
+    """Connects ports ports_from to ports_to, always leaving vertically"""
 
     ey = rotate90(ex)
     for port_from, port_to in zip(ports_from, ports_to):
@@ -212,7 +212,6 @@ def compute_paths_from_clusters(
 
         else:
             offset_port_from = min(port_from.position * ey for port_from, _ in ports_iterator)
-
 
         paths_cluster = []
         for port_from, port_to in ports_iterator:

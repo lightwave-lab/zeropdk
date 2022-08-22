@@ -23,7 +23,7 @@ PointLike = (Point, DPoint, DVector, Vector)
 
 
 def pyaPoint__rmul__(self, factor):
-    """ This implements factor * P """
+    """This implements factor * P"""
     if isinstance(factor, Number):
         return self.__class__(self.x * factor, self.y * factor)
     elif MODULE_NUMPY and isinstance(factor, np.ndarray):  # ideally this is never called
@@ -33,7 +33,7 @@ def pyaPoint__rmul__(self, factor):
 
 
 def pyaPoint__mul__(self, factor):
-    """ This implements P * factor """
+    """This implements P * factor"""
     if isinstance(factor, Number):
         return self.__class__(self.x * factor, self.y * factor)
     elif MODULE_NUMPY and isinstance(factor, np.ndarray):  # Numpy can multiply any object
@@ -45,7 +45,7 @@ def pyaPoint__mul__(self, factor):
 
 
 def pyaPoint__truediv__(self, dividend):
-    """ This implements P / dividend """
+    """This implements P / dividend"""
     return self.__class__(self.x / dividend, self.y / dividend)
 
 
@@ -54,8 +54,8 @@ def pyaPoint__deepcopy__(self, memo):
 
 
 def pyaPoint_norm(self):
-    """ This implements the L2 norm """
-    return sqrt(self.x ** 2 + self.y ** 2)
+    """This implements the L2 norm"""
+    return sqrt(self.x**2 + self.y**2)
 
 
 def pyaPoint_normalize(self):

@@ -32,7 +32,7 @@ import os.path
 
 @lru_cache(maxsize=1)
 def root():
-    """ returns the absolute path of the repository root """
+    """returns the absolute path of the repository root"""
     try:
         base = check_output(["git", "rev-parse", "--show-toplevel"])
     except CalledProcessError:

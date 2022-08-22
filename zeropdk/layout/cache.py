@@ -17,6 +17,7 @@ CACHE_ACTIVATED = os.environ.get("ZEROPDK_CACHE_ACTIVATED", "true") == "true"
 CACHE_DIR = os.environ.get("ZEROPDK_CACHE_DIR", os.path.join(os.getcwd(), "cache"))
 CACHE_PROP_ID = 458
 
+
 def produce_hash(self: Type[PCell], extra: Any = None) -> str:
     """Produces a hash of a PCell instance based on:
     1. the source code of the class and its bases.
