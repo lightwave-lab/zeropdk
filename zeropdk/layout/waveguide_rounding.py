@@ -1,12 +1,16 @@
 """ Straight waveguide rounding algorithms"""
 from functools import lru_cache
 from math import atan2, tan, inf
+from typing import List, Tuple
+import warnings
 import numpy as np
 import klayout.db as kdb
+from numpy.core.fromnumeric import trace
 from zeropdk.layout.geometry import rotate, fix_angle, cross_prod
 from zeropdk.layout.algorithms.sampling import sample_function
+from zeropdk.layout.polygons import layout_path
 from zeropdk.layout.waveguides import layout_waveguide
-
+from zeropdk.exceptions import ZeroPDKUserError, ZeroPDKWarning
 
 def angle_between(v1, v0):
     """Compute angle in radians between v1 and v0.
@@ -46,7 +50,7 @@ def intersect(A, eA, B, eB):
 
 @lru_cache(maxsize=5)
 def _min_clearance(angle_rad, radius):
-    """ Compute the minimum clearance for a tangent arc given an vertex angle."""
+    """Compute the minimum clearance for a tangent arc given an vertex angle."""
     try:
         return abs(radius / tan(angle_rad / 2))
     except ZeroDivisionError:
@@ -172,6 +176,12 @@ def solve_Z(A, B, C, D, radius):
     Aprime = X1 + rotate(X - X1, copysign(pi / 2, α1) + γ - α1)
     Dprime = X2 + rotate(X - X2, copysign(pi / 2, α2) + γ - α2)
 
+    # Verify that Aprime starts after A. If not, throw error.
+    # Verify that Dprime ends before D. If not, throw error.
+    if (Aprime - A) * AB < 0 or (D - Dprime) * CD < 0:
+        raise ZeroPDKUserError(f"Not enough space for Z-turn with radius {radius} on the following points: {[A, B, C, D]}")
+
+
     # print("line", A, Aprime)
     # print("arc2", Aprime, X1, X)
     # print("arc2", X, X2, Dprime)
@@ -280,7 +290,8 @@ def solve_3(A, B, C, radius):
     p0, p1, p2 = A, B, C
     α = angle_between(p0 - p1, p2 - p1)
 
-    if α % (2 * pi) == pi:
+    from math import isclose
+    if isclose(α % (2 * pi), pi):
         # if points are collinear, just ignore middle point
         return ([], [p0, p2])
 
@@ -324,6 +335,23 @@ def solve_4(A, B, C, D, radius):
     else:
         return solve_U(A, B, C, D, radius)
 
+def _traceback_fw(message, category, filename, lineno, line=None):
+    return "-"*80 + "\n" + str(message) + "-"*80 + "\n"
+
+def zeropdk_warn(message, *, traceback=False):
+    """ Provide a warning message with ZeroPDKWarning category and an optional traceback."""
+    warnings.warn(message, category=ZeroPDKWarning, stacklevel=2)
+    if traceback:
+        import traceback
+        tb_stack = traceback.format_list(traceback.extract_stack()[:-1])
+        _oldformatwarning = warnings.formatwarning
+        warnings.formatwarning = _traceback_fw
+        warnings.warn(
+            "Traceback below. Look for the culprit in one of these lines:\n" + "".join(tb_stack),
+            category=ZeroPDKWarning, stacklevel=2
+        )
+        warnings.formatwarning = _oldformatwarning
+
 
 def compute_rounded_path(points, radius):
     """Transforms a list of points into sections of arcs and straight lines.
@@ -334,7 +362,7 @@ def compute_rounded_path(points, radius):
         - If solve3 cannot solve because AB is too short, raise a ClearanceRewind error
         - Conversely, if solve3 cannot solve because BC is too short, raise a ClearanceForward error
         - In the case of ClearanceForward, call solve4 on (A,B,C,D)
-        - In the case of ClearanceForward, call solve4 on (O,A,B,C), where O is the previous point
+        - In the case of ClearanceRewind, call solve4 on (O,A,B,C), where O is the previous point
     Returns:
         - A list of _Line and _Arc objects
     """
@@ -346,11 +374,11 @@ def compute_rounded_path(points, radius):
 
     # Sanity checks
     assert N >= 3, "Insufficient number of points, N = {N} < 3".format(N=N)
-
     old_rounded_path = rounded_path = list()
     old_points_left = points_left = list(points)
-    can_rewind = False
 
+    # condition to check if the last solve_3 was successful (can undo if necessary)
+    can_rewind = False
     while len(points_left) > 2:
         try:
             solution, rest_points = solve_3(*points_left[0:3], radius)
@@ -358,24 +386,38 @@ def compute_rounded_path(points, radius):
             points_left = rest_points + points_left[3:]
             can_rewind = True
         except ClearanceRewind:
-            if not can_rewind:
-                raise RuntimeError(
-                    "Not enough space for enough turns: Cannot solve:", *points_left[0:3]
-                )
-            points_left = old_points_left
-            rounded_path = old_rounded_path
-            if len(points_left[0:4]) < 4:
-                raise RuntimeError(
-                    "Not enough space for enough turns: Cannot solve:", *points_left[0:4]
-                )
-            solution, rest_points = solve_4(*points_left[0:4], radius)
-            old_points_left = points_left[:]
-            points_left = rest_points + points_left[4:]
-            can_rewind = False
+            # Try going forward first, just in case. See stress tests below.
+            forward_possible = False
+            if len(points_left[0:4]) >= 4:
+                forward_possible = True
+                try:
+                    solution, rest_points = solve_4(*points_left[0:4], radius)
+                    old_points_left = points_left[:]
+                    points_left = rest_points + points_left[4:]
+                    can_rewind = False
+                except ZeroPDKUserError as e:
+                    zeropdk_warn(f"`Tried to solve` Z curve, but couldn't fit. Error message: '{e}'. Fallback!", traceback=False)
+                    forward_possible = False
+            if not forward_possible:
+                if not can_rewind:
+                    raise RuntimeError(
+                        "Not enough space to complete arcs in rounded waveguide: Cannot solve:", *points_left[0:3]
+                    )
+                # Rewind: undo last rounded path element and try solve_4.
+                points_left = old_points_left
+                rounded_path = old_rounded_path
+                if len(points_left[0:4]) < 4:
+                    raise RuntimeError(
+                        "Not enough space to complete arcs in rounded waveguide: Cannot solve:", *points_left[0:4]
+                    )
+                solution, rest_points = solve_4(*points_left[0:4], radius)
+                old_points_left = points_left[:]
+                points_left = rest_points + points_left[4:]
+                can_rewind = False
         except ClearanceForward:
             if len(points_left[0:4]) < 4:
                 raise RuntimeError(
-                    "Not enough space for enough turns: Cannot solve:", *points_left[0:4]
+                    "Not enough space to complete arcs in rounded waveguide: Cannot solve:", *points_left[0:4]
                 )
             solution, rest_points = solve_4(*points_left[0:4], radius)
             old_points_left = points_left[:]
@@ -396,7 +438,7 @@ def compute_rounded_path(points, radius):
 
 
 class _Path:
-    """ Object holding path plus width information"""
+    """Object holding path plus width information"""
 
     def __init__(self, points, widths):
         self.points = points
@@ -467,6 +509,7 @@ def compute_tapered_path(path, waveguide_width, taper_width, taper_length):
 
 
 def unique_points(point_list):
+    """ Takes a list of DPoints and removes any duplicates."""
     if len(point_list) < 2:
         return point_list
 
@@ -479,26 +522,29 @@ def unique_points(point_list):
 
     return unique_points
 
-
-def layout_waveguide_from_points(
+def waveguide_from_points(
     cell, layer, points, width, radius, taper_width=None, taper_length=None
-):
+) -> Tuple[List[kdb.DPoint], List[float]]:
+    """Draws a waveguide with rounded corners given a path of manhattan-like points.
 
+    Returns:
+        - points: list of DPoints
+        - widths: list of widths with same length as points.
+
+    """
     assert radius > width / 2, "Please use a radius larger than the half-width"
     points = unique_points(points)
 
     if len(points) < 2:
-        # Nothing to do
-        return cell
+        raise ZeroPDKUserError(f"Tried to draw a waveguide with only one point.")
 
     # First, get the list of lines and arcs
     try:
         rounded_path = compute_rounded_path(points, radius)
     except Exception as e:
-        print("ERROR:", e)
-        print("Continuing...")
-        layout_waveguide(cell, layer, points, 0.1)
-        return cell
+        zeropdk_warn(f"Error while computing rounded path for waveguide. {str(e)}. Continuing...", traceback=True)
+        layout_path(cell, layer, points, 0.1)
+        return points, [width] * len(points)
 
     # Taper path if necessary
     if taper_width is not None and taper_length is not None:
@@ -536,7 +582,19 @@ def layout_waveguide_from_points(
         _draw_widths2.append(w)
         _cur_point = p
 
-    layout_waveguide(cell, layer, _draw_points2, _draw_widths2, smooth=False)
+    return _draw_points2, _draw_widths2
+
+def layout_waveguide_from_points(
+    cell, layer, points, width, radius, taper_width=None, taper_length=None
+):
+
+    points, widths = waveguide_from_points(
+        cell, layer, points, width, radius,
+        taper_width=taper_width,
+        taper_length=taper_length
+    )
+
+    layout_waveguide(cell, layer, points, widths, smooth=False)
 
     return cell
 
@@ -561,6 +619,8 @@ def main():
     layerRec = kdb.LayerInfo(1001, 0)
 
     ex, ey = kdb.DPoint(1, 0), kdb.DPoint(0, 1)
+
+    # Begin tests
 
     points = [0 * ex, 10 * ex, 10 * (ex + ey), 30 * ex]
     origin = 0 * ey
@@ -613,6 +673,43 @@ def main():
     origin = 40 * ex + 40 * ey
     points_ = [origin + point for point in points]
     layout_waveguide_from_points(TOP, layer, points_, 0.5, 5, taper_width=3, taper_length=10)
+
+
+    # Stress test about ClearanceRewind when forward would work.
+    origin = 40 * ex + 80 * ey
+    points = [
+        0 * ex,
+        222 * ey,
+        20 * ex + 222 * ey,
+        20 * ex + 371 * ey,
+    ]
+    points_ = [origin + point for point in points]
+    layout_waveguide_from_points(TOP, layer, points_, 5, 500)
+
+    # Stress test on trying forward first after ClearanceRewind.
+
+    origin = 60 * ex + 80 * ey
+    points = [
+        0 * ex,
+        222 * ey,
+        231 * ex + 222 * ey,
+        231 * ex + 460 * ey,
+    ]
+    points_ = [origin + point for point in points]
+    # breakpoint()
+    layout_waveguide_from_points(TOP, layer, points_, 5, 230)
+
+    origin = 80 * ex + 80 * ey
+    points = [
+        0 * ex,
+        100 * ey,
+        30 * ex + 100 * ey,
+        30 * ex + 200 * ey,
+    ]
+    points_ = [origin + point for point in points]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        layout_waveguide_from_points(TOP, layer, points_, 5, 550)
 
     print("Wrote waveguide_rounding.gds")
     TOP.write("waveguide_rounding.gds")

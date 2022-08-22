@@ -6,7 +6,7 @@ class Tech:
 
     def __init__(self):
         if self.layers is None:
-            self.layers = dict()
+            self.layers = {}
 
     def add_layer(self, layer_name, layer_def):
         """Adds a layer to the technology file.
@@ -48,10 +48,9 @@ class Tech:
                     layer_map[k["name"]] = layerInfo
                 except TypeError as e:
                     new_message = (
-                        "Bad name for layer {}. Check your .lyp XML file for errors.".format(
-                            layerInfo
-                        )
+                        f"Bad name for layer {layerInfo}. Check your .lyp XML file for errors."
                     )
+
                     raise TypeError(new_message) from e
 
         # layer_map should contain values like '12/0'
@@ -83,7 +82,7 @@ def etree_to_dict(t):
                 dd[k].append(v)
         d = {t.tag: {k: v[0] if len(v) == 1 else v for k, v in dd.items()}}
     if t.attrib:
-        d[t.tag].update(("@" + k, v) for k, v in t.attrib.items())
+        d[t.tag].update((f"@{k}", v) for k, v in t.attrib.items())
     if t.text:
         text = t.text.strip()
         if children or t.attrib:

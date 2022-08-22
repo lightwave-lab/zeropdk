@@ -9,10 +9,10 @@ from typing import Callable
 try:
     import numpy as np
 except ImportError:
-
-    def sample_function(*args, **kwargs):
+    def sample_function(
+        func: Callable, points, tol=0.001, min_points=8, max_level=16, sample_transform=None
+    ):
         raise NotImplementedError("Need numpy package to be installed")
-
 
 else:
 
@@ -76,7 +76,7 @@ else:
         >>> plt.show()
 
         """
-        with np.errstate(divide="ignore", invalid="ignore"):
+        with np.errstate(divide="ignore", invalid="ignore"): # type: ignore
             return _sample_function(
                 func,
                 points,
@@ -155,7 +155,7 @@ else:
 
             # compute the length of each line segment in the path
             dp = np.diff(p, axis=-1)
-            s = np.sqrt((dp ** 2).sum(axis=0))
+            s = np.sqrt((dp**2).sum(axis=0))
             s_tot = s.sum()
 
             # compute the angle between consecutive line segments

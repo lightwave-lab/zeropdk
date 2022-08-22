@@ -30,7 +30,7 @@ def main():
         long_description=readme,
         long_description_content_type="text/markdown",
         license=license_text.split("\n")[0],
-        python_requires=">=3.6",
+        python_requires=">=3.7",
         packages=find_packages(include=("zeropdk.*")),
         url="https://github.com/lightwave-lab/zeropdk",
         author="Thomas Ferreira de Lima <tlima@princeton.edu>",
