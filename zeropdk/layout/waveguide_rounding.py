@@ -20,7 +20,8 @@ def project(P, A, B):
     AB = B - A
     eAB = AB / AB.norm()
 
-    return A + (P - A) * eAB * eAB
+    Pproj = A + (P - A) * eAB * eAB
+    return Pproj
 
 
 def bisect(V1, V2):
@@ -227,7 +228,8 @@ def solve_U(A, B, C, D, radius):
 
         D = (E - Eprime).norm()
         L = sqrt(D * (4 * radius - D))
-        return Eprime - eAB * L
+        Aprime = Eprime - eAB * L
+        return Aprime
 
     Aprime = compute_A_prime(E, Eprime, eAB)
     Dprime = compute_A_prime(G, Gprime, eDC)
@@ -351,28 +353,31 @@ def compute_rounded_path(points, radius):
 
     while len(points_left) > 2:
         try:
-            solution, rest_points = solve_3(*points_left[:3], radius)
+            solution, rest_points = solve_3(*points_left[0:3], radius)
             old_points_left = points_left[:]
             points_left = rest_points + points_left[3:]
             can_rewind = True
         except ClearanceRewind:
             if not can_rewind:
-                raise RuntimeError("Not enough space for enough turns: Cannot solve:", *points_left[:3])
-
+                raise RuntimeError(
+                    "Not enough space for enough turns: Cannot solve:", *points_left[0:3]
+                )
             points_left = old_points_left
             rounded_path = old_rounded_path
-            if len(points_left[:4]) < 4:
-                raise RuntimeError("Not enough space for enough turns: Cannot solve:", *points_left[:4])
-
-            solution, rest_points = solve_4(*points_left[:4], radius)
+            if len(points_left[0:4]) < 4:
+                raise RuntimeError(
+                    "Not enough space for enough turns: Cannot solve:", *points_left[0:4]
+                )
+            solution, rest_points = solve_4(*points_left[0:4], radius)
             old_points_left = points_left[:]
             points_left = rest_points + points_left[4:]
             can_rewind = False
         except ClearanceForward:
-            if len(points_left[:4]) < 4:
-                raise RuntimeError("Not enough space for enough turns: Cannot solve:", *points_left[:4])
-
-            solution, rest_points = solve_4(*points_left[:4], radius)
+            if len(points_left[0:4]) < 4:
+                raise RuntimeError(
+                    "Not enough space for enough turns: Cannot solve:", *points_left[0:4]
+                )
+            solution, rest_points = solve_4(*points_left[0:4], radius)
             old_points_left = points_left[:]
             points_left = rest_points + points_left[4:]
             can_rewind = False
@@ -381,7 +386,7 @@ def compute_rounded_path(points, radius):
         rounded_path += solution
 
     # there should be 2 points left in points_left
-    solution, rest_points = solve_2(*points_left[:2])
+    solution, rest_points = solve_2(*points_left[0:2])
     rounded_path += solution
     points_left = rest_points + points_left[2:]
 

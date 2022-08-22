@@ -36,7 +36,8 @@ def produce_hash(self: Type[PCell], extra: Any = None) -> str:
     long_hash_pcell = sha256(
         (source_code + str_diff_params + self.name + str(extra)).encode()
     ).hexdigest()
-    return long_hash_pcell[:7]
+    short_hash_pcell = long_hash_pcell[0:7]
+    return short_hash_pcell
 
 
 def read_layout(layout: Type[pya.Layout], gds_filename: str, disambiguation_name: str = ""):
@@ -86,11 +87,12 @@ def read_layout(layout: Type[pya.Layout], gds_filename: str, disambiguation_name
 
     if disambiguation_name != "":
         disambiguation_name = f"_{disambiguation_name}"
+        # new cell name will be duplicate_name_disambiguation_name
 
     prune_cells_indices = []
     used_cell_names = list(cell_indices.keys())
     for i_duplicate, name_cached_cell in cell_names2:
-        if name_cached_cell in cell_indices:
+        if name_cached_cell in cell_indices.keys():
             if name_cached_cell.startswith("cache_") or (name_cached_cell in cache_set):
                 # cell_indices[name_cached_cell] contains a reference to the "original" cell
                 # we want to find every instance to duplicates (layout.cell(i_duplicate))
@@ -227,6 +229,8 @@ def cache_cell(
                 assert not layout.has_cell(cache_fname)
 
                 read_layout(layout, cache_fpath_gds, disambiguation_name=cellname)
+
+            # Place the imported cell into the parent (e.g. TOP) cell.
             retrieved_cell = layout.cell(cache_fname)
             cell.insert(
                 pya.DCellInstArray(

@@ -234,7 +234,7 @@ class ParamContainer(Mapping):
 
     def __iter__(self):
         values_dict = {p.name: p.default for p in self._container.values()}
-        values_dict |= self._current_values
+        values_dict.update(self._current_values)
         return iter(values_dict)
 
     def __len__(self):

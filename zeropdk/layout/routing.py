@@ -106,7 +106,7 @@ def common_layout_manhattan_traces(
 
         points_list.append(point)  # store points
         widths_list.append(width)
-        if layer != previous_layer:
+        if layer != previous_layer: # time to place a via and layout
             layout_waveguide(
                 cell,
                 ensure_layer(layout, previous_layer),

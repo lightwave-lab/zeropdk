@@ -75,7 +75,10 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
         cos_angle = point1 * point2 / norm(point1) / norm(point2)
 
         # ensure it's between -1 and 1 (nontrivial numerically)
-        return cos_angle / abs(cos_angle) if abs(cos_angle) > 1 else cos_angle
+        if abs(cos_angle) > 1:
+            return cos_angle / abs(cos_angle)
+        else:
+            return cos_angle
 
     def sin_angle(point1, point2):
         return cross_prod(point1, point2) / norm(point1) / norm(point2)
@@ -232,9 +235,12 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
                     if cos_angle(curr_edge, prev_edge) > cos(130 / 180 * pi):
                         point_list.append(point)
                     elif norm(curr_edge) > norm(prev_edge):
+                        # edge case when there is prev_edge is small and
+                        # needs to be deleted to get rid of the corner
                         point_list[-1] = point
                 else:
                     point_list.append(point)
+            # avoid unnecessary points
             else:
                 point_list[-1] = point
         return point_list

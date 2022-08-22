@@ -38,7 +38,7 @@ class Tech:
                     layerInfo_j = j["source"].split("@")[0]
                     layer_map[j["name"]] = layerInfo_j
                 else:
-                    for j in j:
+                    for j in k["group-members"]:
                         layerInfo_j = j["source"].split("@")[0]
                         layer_map[j["name"]] = layerInfo_j
                 if k["source"] != "*/*@*":

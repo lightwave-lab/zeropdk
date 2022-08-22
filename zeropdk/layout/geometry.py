@@ -65,10 +65,14 @@ def project(v, ex, ey=None):
     if cross_prod(ex, ey) == 0:
         raise RuntimeError(f"ex={repr(ex)} and ey={repr(ey)} are not orthogonal.")
 
+    # Simple formula
+    # https://math.stackexchange.com/questions/148199/equation-for-non-orthogonal-projection-of-a-point-onto-two-vectors-representing
+
+    a = cross_prod(ey, v) / cross_prod(ey, ex)
     # b = cross_prod(ex, v) / cross_prod(ex, ey)
 
     # v == a * ex + b * ey
-    return cross_prod(ey, v) / cross_prod(ey, ex)
+    return a
 
 
 def curve_length(curve, t0=0, t1=1):
@@ -123,7 +127,11 @@ def find_Z_orientation(P0, P1, ex):
         0 for Z-oriented and 1 for S-oriented
 
     """
-    return 0 if P1 * ex > P0 * ex else 1
+    if P1 * ex > P0 * ex:
+        orient = 0  # Z-oriented
+    else:
+        orient = 1  # S-oriented
+    return orient
 
 
 def cluster_ports(ports_from, ports_to, ex):
@@ -191,7 +199,13 @@ def bezier_line(P0, P1, P2, P3):
     Reference
         https://en.wikipedia.org/wiki/Bézier_curve"""
 
-    return lambda t: (1 - t) ** 3 * P0 + 3 * (1 - t) ** 2 * t * P1 + 3 * (1 - t) * t**2 * P2 + t**3 * P3
+    curve_func = (
+        lambda t: (1 - t) ** 3 * P0
+        + 3 * (1 - t) ** 2 * t * P1
+        + 3 * (1 - t) * t ** 2 * P2
+        + t ** 3 * P3
+    )
+    return curve_func
 
 
 def curvature_bezier(P0, P1, P2, P3):
@@ -214,7 +228,8 @@ def curvature_bezier(P0, P1, P2, P3):
     dy = lambda t: b_prime(t).y
     ddx = lambda t: b_second(t).x
     ddy = lambda t: b_second(t).y
-    return lambda t: (dx(t) * ddy(t) - dy(t) * ddx(t)) / (dx(t) ** 2 + dy(t) ** 2) ** (3 / 2)
+    curv_func = lambda t: (dx(t) * ddy(t) - dy(t) * ddx(t)) / (dx(t) ** 2 + dy(t) ** 2) ** (3 / 2)
+    return curv_func
 
 
 from scipy.optimize import minimize
@@ -224,7 +239,8 @@ def max_curvature(P0, P1, P2, P3):
     """Gets the maximum curvature of Bezier curve"""
     t = np.linspace(0, 1, 300)
     curv = curvature_bezier(P0, P1, P2, P3)(t)
-    return np.max(np.abs(curv.flatten()))
+    max_curv = np.max(np.abs(curv.flatten()))
+    return max_curv
 
 
 def _curvature_penalty(P0, P1, P2, P3):
@@ -236,7 +252,10 @@ def _curvature_penalty(P0, P1, P2, P3):
     curv_initial = curv[0]
     curv_final = curv[-1]
 
-    return max_curv + 2 * (curv_initial + curv_final)
+    # this will cause the minimum curvature to be about 4 times lower
+    # than at the origin and end points.
+    penalty = max_curv + 2 * (curv_initial + curv_final)
+    return penalty
 
 
 def fix_angle(angle):

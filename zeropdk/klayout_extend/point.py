@@ -72,7 +72,9 @@ def pyaPoint__init__(self, *args):
                 self.x = p.x
                 self.y = p.y
             except:
-                raise ValueError(f"Cannot understand {p}")
+                raise ValueError("Cannot understand {}".format(p))
+    except Exception:
+        raise ValueError("Unknown constructor")
 
 
 def pyaPoint__getstate__(self):
