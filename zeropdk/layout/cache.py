@@ -6,7 +6,7 @@ import pickle
 import logging
 from hashlib import sha256
 from functools import partial, wraps
-from typing import Any, Union, Callable, Dict
+from typing import Any, Type, Union, Callable, Dict
 
 import klayout.db as pya
 from zeropdk.pcell import PCell
@@ -22,6 +22,8 @@ def produce_hash(self: PCell, extra: Any = None) -> str:
     1. the source code of the class and its bases.
     2. the non-default parameter with which the pcell method is called
     3. the name of the pcell
+    4. PCell's layout.dbu variable
+    4. extra provided arcuments
     """
     # copy source code of class and all its ancestors
     source_code = "".join(
@@ -126,8 +128,8 @@ def read_layout(layout: pya.Layout, gds_filename: str, disambiguation_name: str 
 
 
 def cache_cell(
-    cls: PCell = None, *, extra_hash: Any = None, cache_dir: str = CACHE_DIR
-) -> Union[PCell, Callable]:
+    cls: Type[PCell] = None, *, extra_hash: Any = None, cache_dir: str = CACHE_DIR
+) -> Union[Type[PCell], Callable]:
     """Caches results of pcell call to save build time.
 
     First, it computes a hash based on:

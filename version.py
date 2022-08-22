@@ -1,7 +1,7 @@
 # version.py
 
 # The short X.Y version.
-version = "20.12"
+version = "22.08"
 # The full version, including alpha/beta/rc tags.
 release = version + ""
 
