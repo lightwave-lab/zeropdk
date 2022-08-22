@@ -90,8 +90,8 @@ def common_layout_manhattan_traces(
     if initiate_with_via:
         via_cell_placer(cell, first_point, first_width, layer1, layer2, layervia, ex)
 
-    points_list = list()
-    widths_list = list()
+    points_list = []
+    widths_list = []
     _, previous_layer, _ = path[0]
     layout = cell.layout()
 
@@ -104,12 +104,9 @@ def common_layout_manhattan_traces(
             if isinstance(point, pya.DVector):
                 point = pya.DPoint(point)
 
-        if layer == previous_layer:
-            points_list.append(point)  # store points
-            widths_list.append(width)
-        else:  # time to place a via and layout
-            points_list.append(point)
-            widths_list.append(width)
+        points_list.append(point)  # store points
+        widths_list.append(width)
+        if layer != previous_layer:  # time to place a via and layout
             layout_waveguide(
                 cell,
                 ensure_layer(layout, previous_layer),
@@ -152,7 +149,7 @@ def connect_ports_L(cell, cplayer, ports_from, ports_to, ex):
 
     ey = rotate90(ex)
     for port_from, port_to in zip(ports_from, ports_to):
-        assert port_from.direction == ey or port_from.direction == -ey
+        assert port_from.direction in [ey, -ey]
         o_y = ey if port_to.position * ey > port_from.position * ey else -ey
         o_x = ex if port_to.position * ex > port_from.position * ex else -ex
 
@@ -211,9 +208,10 @@ def compute_paths_from_clusters(
         ), "There must be a line dividing the top and bottom port rows. Maybe you are using the wrong ex argument?"
 
         if is_to_top:
-            offset_port_from = max([port_from.position * ey for port_from, _ in ports_iterator])
+            offset_port_from = max(port_from.position * ey for port_from, _ in ports_iterator)
+
         else:
-            offset_port_from = min([port_from.position * ey for port_from, _ in ports_iterator])
+            offset_port_from = min(port_from.position * ey for port_from, _ in ports_iterator)
 
         paths_cluster = []
         for port_from, port_to in ports_iterator:

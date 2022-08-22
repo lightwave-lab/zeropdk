@@ -53,17 +53,15 @@ def patch_simple_polygon(backend):
             def intersect_left_boundary(p1, p2, x_bounds, y_bounds):
                 left_most, right_most = (p1, p2) if p1.x < p2.x else (p2, p1)
                 bottom_most, top_most = (p1, p2) if p1.y < p2.y else (p2, p1)
-                if left_most.x < x_bounds[0]:
-                    # intersection only if right_most crosses x_bound[0]
-                    if right_most.x > x_bounds[0]:
-                        # outside the box, on the left
-                        y_intersect = np.interp(
-                            x_bounds[0],
-                            [left_most.x, right_most.x],
-                            [left_most.y, right_most.y],
-                        )
-                        if y_bounds[0] < y_intersect and y_bounds[1] > y_intersect:
-                            return backend.DPoint(float(x_bounds[0]), float(y_intersect))
+                if left_most.x < x_bounds[0] and right_most.x > x_bounds[0]:
+                    # outside the box, on the left
+                    y_intersect = np.interp(
+                        x_bounds[0],
+                        [left_most.x, right_most.x],
+                        [left_most.y, right_most.y],
+                    )
+                    if y_bounds[0] < y_intersect and y_bounds[1] > y_intersect:
+                        return backend.DPoint(float(x_bounds[0]), float(y_intersect))
                 return None
 
             def intersect(p1, p2, x_bounds, y_bounds):
@@ -71,7 +69,7 @@ def patch_simple_polygon(backend):
                 last_intersect = None
 
                 def rotate_bounds90(x_bounds, y_bounds, i_times):
-                    for i in range(i_times):
+                    for _ in range(i_times):
                         x_bounds, y_bounds = (
                             (-y_bounds[1], -y_bounds[0]),
                             (x_bounds[0], x_bounds[1]),
@@ -153,7 +151,7 @@ def patch_simple_polygon(backend):
             return self
 
         def layout(self, cell, layer):
-            """ Places polygon as a shape into a cell at a particular layer."""
+            """Places polygon as a shape into a cell at a particular layer."""
             from zeropdk.layout import insert_shape
 
             return insert_shape(cell, layer, self)
@@ -196,7 +194,7 @@ def patch_simple_polygon(backend):
             dpoly = dpoly[0].to_dtype(dbu)  # backend.DPolygon
 
             def norm(p):
-                return sqrt(p.x ** 2 + p.y ** 2)
+                return sqrt(p.x**2 + p.y**2)
 
             # Filter edges if they are too small
             points = list(dpoly.each_point_hull())
@@ -211,7 +209,7 @@ def patch_simple_polygon(backend):
             return self
 
         def round_corners(self, radius, N):
-            """ This only works if the polygon edges are longer than the radius."""
+            """This only works if the polygon edges are longer than the radius."""
 
             dpoly = super().round_corners(radius, radius, N)
             self.assign(dpoly)

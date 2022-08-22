@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def rotate(point, angle_rad: float):
-    """ Rotates point counter-clockwisely about its origin by an angle given in radians"""
+    """Rotates point counter-clockwisely about its origin by an angle given in radians"""
     th = angle_rad
     x, y = point.x, point.y
     new_x = x * np.cos(th) - y * np.sin(th)
@@ -63,12 +63,12 @@ def find_arc(A, B, C):
 
 
 def project(v, ex, ey=None):
-    """ Compute a such that v = a * ex + b * ey """
+    """Compute a such that v = a * ex + b * ey"""
     if ey is None:
         ey = rotate90(ex)
 
     if cross_prod(ex, ey) == 0:
-        raise RuntimeError("ex={} and ey={} are not orthogonal.".format(repr(ex), repr(ey)))
+        raise RuntimeError(f"ex={repr(ex)} and ey={repr(ey)} are not orthogonal.")
 
     # Simple formula
     # https://math.stackexchange.com/questions/148199/equation-for-non-orthogonal-projection-of-a-point-onto-two-vectors-representing
@@ -91,27 +91,23 @@ def curve_length(curve, t0=0, t1=1):
     if isinstance(curve, list):
         # assuming curve is a list of points
         scale = (curve[-1] - curve[0]).norm()
-        if scale > 0:
-            coords = np.array([[point.x, point.y] for point in curve]).T
-            dp = np.diff(coords, axis=-1)
-            ds = np.sqrt((dp ** 2).sum(axis=0))
-            return ds.sum()
-        else:
+        if scale <= 0:
             return 0
+        coords = np.array([[point.x, point.y] for point in curve]).T
+        dp = np.diff(coords, axis=-1)
     else:
         # assuming curve is a function.
         curve_func = curve
         scale = (curve_func(t1) - curve_func(t0)).norm()
-        if scale > 0:
-            coords = lambda t: np.array([curve_func(t).x, curve_func(t).y])
-            _, sampled_coords = sample_function(
-                coords, [t0, t1], tol=0.0001 / scale, min_points=100
-            )  # 1000 times more precise than the scale
-            dp = np.diff(sampled_coords, axis=-1)
-            ds = np.sqrt((dp ** 2).sum(axis=0))
-            return ds.sum()
-        else:
+        if scale <= 0:
             return 0
+        coords = lambda t: np.array([curve_func(t).x, curve_func(t).y])
+        _, sampled_coords = sample_function(
+            coords, [t0, t1], tol=0.0001 / scale, min_points=100
+        )  # 1000 times more precise than the scale
+        dp = np.diff(sampled_coords, axis=-1)
+    ds = np.sqrt((dp**2).sum(axis=0))
+    return ds.sum()
 
 
 def manhattan_intersection(vertical_point, horizontal_point, ex):
@@ -211,8 +207,8 @@ def bezier_line(P0, P1, P2, P3):
     curve_func = (
         lambda t: (1 - t) ** 3 * P0
         + 3 * (1 - t) ** 2 * t * P1
-        + 3 * (1 - t) * t ** 2 * P2
-        + t ** 3 * P3
+        + 3 * (1 - t) * t**2 * P2
+        + t**3 * P3
     )
     return curve_func
 
@@ -230,7 +226,7 @@ def curvature_bezier(P0, P1, P2, P3):
     b_prime = (
         lambda t: 3 * (1 - t) ** 2 * (P1 - P0)
         + 6 * (1 - t) * t * (P2 - P1)
-        + 3 * t ** 2 * (P3 - P2)
+        + 3 * t**2 * (P3 - P2)
     )
     b_second = lambda t: 6 * (1 - t) * (P2 - 2 * P1 + P0) + 6 * t * (P3 - 2 * P2 + P1)
     dx = lambda t: b_prime(t).x
@@ -286,7 +282,7 @@ from numpy import sqrt
 
 
 class _Point(object):
-    """ Defines a point with two coordinates. Mimics pya.Point"""
+    """Defines a point with two coordinates. Mimics pya.Point"""
 
     def __init__(self, x, y):
         self.x = x
@@ -305,7 +301,7 @@ class _Point(object):
     __array_priority__ = MAGIC_NUMBER  #: This allows rmul to be called first. See https://stackoverflow.com/questions/38229953/array-and-rmul-operator-in-python-numpy"""
 
     def __mul__(self, factor):
-        """ This implements P * factor"""
+        """This implements P * factor"""
         if isinstance(factor, np.ndarray):
             # Return a Line instead
             return _Line(self.x * factor, self.y * factor)
@@ -314,7 +310,7 @@ class _Point(object):
         return self.__class__(self.x * factor, self.y * factor)
 
     def __rmul__(self, factor):
-        """ This implements factor * P """
+        """This implements factor * P"""
         if isinstance(factor, np.ndarray):
             return self.__mul__(factor)
         return self.__class__(self.x * factor, self.y * factor)
@@ -323,14 +319,14 @@ class _Point(object):
         return self.x == other.x and self.y == other.y
 
     def __str__(self):
-        return "Point({}, {})".format(self.x, self.y)
+        return f"Point({self.x}, {self.y})"
 
     def norm(self):
-        return sqrt(self.x ** 2 + self.y ** 2)
+        return sqrt(self.x**2 + self.y**2)
 
 
 class _Line(_Point):
-    """ Defines a line """
+    """Defines a line"""
 
     def __init__(self, x, y):
         self.x, self.y = np.asarray(x), np.asarray(y)
@@ -357,7 +353,7 @@ def _bezier_optimal(angle0: float, angle3: float) -> Tuple[float, float]:
     # print(f"Solving for angles: {angle0}, {angle3}", end='...\t\t')
 
     def J(a, b, a_max, b_max, cross=False):
-        """ Energy function for bezier optimization """
+        """Energy function for bezier optimization"""
         P0 = _Point(0, 0)
         P3 = _Point(1, 0)
         P1 = P0 + a * _Point(np.cos(angle0), np.sin(angle0))
@@ -535,7 +531,6 @@ try:
         #               axis=1)  # finish the waveguide a little bit after
 
         return [pya.DPoint(x, y) for (x, y) in zip(*(bezier_point_coordinates_sampled))]
-
 
 except ImportError:
     logger.error("klayout not detected. It is a requirement of zeropdk for now.")

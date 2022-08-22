@@ -24,8 +24,10 @@ def cell_insert_cell(
 
 Cell.insert_cell = cell_insert_cell
 
+
 def override_layer(method):
     old_method = method
+
     @wraps(old_method)
     def new_method(self: Type[Cell], layer, *args, **kwargs):
         if isinstance(layer, (kdb.LayerInfo, str)):
@@ -33,7 +35,9 @@ def override_layer(method):
         else:
             layer_index = layer
         return old_method(self, layer_index, *args, **kwargs)
+
     return new_method
+
 
 # All the methods that have layer_index as first argument
 # I would like to allow LayerInfo to be passed as parameter
