@@ -194,6 +194,8 @@ def compute_paths_from_clusters(
             ports_iterator = list(iter(ports_cluster))
         elif orientation == Z:
             ports_iterator = list(reversed(ports_cluster))
+        else:
+            raise NotImplementedError(f"Unknown orientation {orientation}. Must be 0 or 1.")
 
         is_to_top = is_to_bottom = False
         # check which row is on the top:

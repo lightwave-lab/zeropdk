@@ -4,10 +4,11 @@
 # Modified by Thomas Ferreira de Lima @thomaslima
 # License: CC BY 4.0 https://creativecommons.org/licenses/by/4.0/
 
-from typing import Callable
+from typing import Callable, Tuple
 
 try:
     import numpy as np
+    import numpy.typing as npt
 except ImportError:
     def sample_function(
         func: Callable, points, tol=0.001, min_points=8, max_level=16, sample_transform=None
@@ -99,7 +100,7 @@ else:
         min_points=16,
         max_level=16,
         sample_transform=None,
-    ):
+    ) -> Tuple[npt.NDArray, npt.NDArray]:
         points = np.unique(points)
 
         if values is None:

@@ -1,3 +1,4 @@
+from typing import Callable, Tuple
 import pytest
 from ..context import zeropdk  # noqa
 from zeropdk.layout.polygons import rectangle
@@ -17,7 +18,7 @@ def top_cell():
     return _top_cell
 
 
-def test_rectangle_write(top_cell):
+def test_rectangle_write(top_cell: Callable[[], Tuple[kdb.Cell, kdb.Layout]]):
     TOP, layout = top_cell()
     layer = "1/0"
     center = kdb.DPoint(0, 0)
@@ -27,6 +28,6 @@ def test_rectangle_write(top_cell):
     ey = kdb.DVector(0, 1)
     r = rectangle(center, width, height, ex, ey)
     assert str(r) == "(-10,-15;-10,-5;10,15;10,5)"
-
-    insert_shape(TOP, layer, r)
+    insert_shape(TOP, layer, r)  # this works because the Cell.shapes method is monkeypatched
+    assert str(list(TOP.shapes(layer).each())[0]) == "simple_polygon (-10000,-15000;-10000,-5000;10000,15000;10000,5000)"
     TOP.write("tests/tmp/test_rectangle.gds")

@@ -1,4 +1,3 @@
-from typing import Callable
 from klayout.db import Layout, Cell
 
 

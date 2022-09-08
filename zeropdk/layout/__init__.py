@@ -1,12 +1,11 @@
-def insert_shape(cell, layer, shape):
+import klayout.db as kdb
+
+def insert_shape(cell: kdb.Cell, layer, shape):
     if layer is not None:
         cell.shapes(layer).insert(shape)
 
 
-import klayout.db as kdb
-
-
-def layout_pgtext(cell, layer, x, y, text, mag, inv=False, angle=0):
+def layout_pgtext(cell: kdb.Cell, layer, x, y, text, mag, inv=False, angle=0):
     layout = kdb.Layout()
     lylayer = layout.layer(layer)
     for i, line in enumerate(text.splitlines()):

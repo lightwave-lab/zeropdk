@@ -124,7 +124,7 @@ def layout_path_with_ends(cell, layer: kdb.LayerInfo, point_iterator: Iterable[k
     cell.shapes(layer).insert(dpath)
 
 
-def append_relative(points, *relative_vectors):
+def append_relative(points: list, *relative_vectors):
     """Appends to list of points in relative steps:
     It takes a list of points, and adds new points to it in relative coordinates.
     For example, if you call append_relative([A, B], C, D), the result will be [A, B, B+C, B+C+D].
