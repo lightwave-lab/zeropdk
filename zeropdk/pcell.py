@@ -1,16 +1,21 @@
 """PCell definitions that improve upon Klayout pcells."""
 
+from ast import Param
 from collections import defaultdict
+from optparse import Option
 import os
 import warnings
 import logging
 from copy import copy, deepcopy
-from typing import Dict, List, Tuple, Any, Optional, Type
+from typing import Dict, List, Tuple, Any, Optional, Type, Union
 from collections.abc import Mapping, MutableMapping
 
 import klayout.db as kdb
 from zeropdk.exceptions import ZeroPDKWarning
 from zeropdk.layout.geometry import rotate90
+from zeropdk.klayout_helper.layout import layout_read_cell
+from zeropdk.klayout_helper.cell import cell_insert_cell
+from zeropdk.layout import insert_shape
 
 logger = logging.getLogger(__name__)
 
@@ -18,10 +23,12 @@ TypeDouble = float
 TypeInt = int
 TypeBoolean = bool
 TypeString = str
-TypeList = list
+TypeList = List[Any]
 TypePoint = kdb.DPoint
 TypeVector = kdb.DVector
 TypeLayer = kdb.LayerInfo
+
+ParamTypes = Union[TypeDouble, TypeInt, TypeBoolean, TypeString, TypeList, kdb.DPoint, kdb.DVector, kdb.LayerInfo]
 
 # I like using 'type' as argument names, but that conflicts with
 # python's keyword type
@@ -46,12 +53,12 @@ class PCellParameter:
         self,
         *,
         name,
-        type=None,
+        type: Optional[Type[ParamTypes]] = None,
         description="No description",
-        default=None,
-        unit=None,
+        default: Optional[ParamTypes]=None,
+        unit: Optional[str] =None,
         readonly=False,
-        choices=None,
+        choices: Optional[List[Tuple[str, Any]]] = None,
     ):
         self.name: str = name
         if type is None and default is not None:
@@ -63,9 +70,9 @@ class PCellParameter:
 
         self.description: str = description
         self.default = default
-        self.unit: str = unit
+        self.unit = unit
         self.readonly: bool = readonly
-        self.choices: List[Tuple[str, Any]] = choices
+        self.choices = choices
 
     def __repr__(self):
         return '<"{name}", type={type}, default={default}>'.format(
@@ -75,7 +82,7 @@ class PCellParameter:
     def __str__(self):
         return repr(self)
 
-    def parse(self, value):
+    def parse(self, value: ParamTypes):
         """Makes sure that the value is of a certain type"""
         if self.type is None:
             new_type = type(value)
@@ -91,7 +98,14 @@ class PCellParameter:
             return value
 
         try:
-            return self.type(value)
+            if isinstance(value, self.type):
+                return value
+            elif self.type in (kdb.DPoint, kdb.DVector, kdb.LayerInfo):  # klayout throws RuntimeError instead of TypeError
+                try:
+                    return self.type(value)  # type: ignore
+                except RuntimeError as e:
+                    raise TypeError from e
+            return self.type(value)  # type: ignore
         except (TypeError, ValueError) as parse_exception:
             raise TypeError(
                 "Cannot set '{name}' to {value}. "
@@ -169,9 +183,9 @@ class ParamContainer(Mapping):
     """
 
     _container: Dict[str, PCellParameter]
-    _current_values: Dict[str, PCellParameter]
+    _current_values: Dict[str, Optional[ParamTypes]]
 
-    def __init__(self, *args):
+    def __init__(self, *args: Union[PCellParameter, 'ParamContainer']):
         """Two ways of initializing:
         1. ParamContainer(pc_obj), where pc_obj is another param_container
         2. ParamContainer(param1, param2, param3, ...), where param is of type
@@ -185,8 +199,8 @@ class ParamContainer(Mapping):
             self._container = copy(param_container._container)
             self._current_values = copy(param_container._current_values)
         elif len(args) > 0:
-            for arg in args:
-                param = arg  # TODO: check type
+            for param in args:
+                assert isinstance(param, PCellParameter)
                 self.add_param(param)
 
     def add_param(self, param: PCellParameter):
@@ -197,7 +211,7 @@ class ParamContainer(Mapping):
             del self._current_values[param.name]
         return param
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str):
         try:
             value = self._current_values[name]
         except KeyError:
@@ -206,7 +220,7 @@ class ParamContainer(Mapping):
 
         return value
 
-    def __setattr__(self, name, new_value):
+    def __setattr__(self, name: str, new_value: ParamTypes):
         """Set a parameter instead of an instance attribute."""
 
         protected_list = ("_container", "_current_values")
@@ -232,7 +246,7 @@ class ParamContainer(Mapping):
         return new_params
 
     # Methods necessary to override a read-only dict():
-    def __getitem__(self, key):
+    def __getitem__(self, key: str):
         return self.__getattr__(key)
 
     def __iter__(self):
@@ -247,11 +261,11 @@ class ParamContainer(Mapping):
 class Port(object):
     """Defines a port object"""
 
-    def __init__(self, name, position, direction, width, port_type=None):
+    def __init__(self, name, position, direction, width, port_type: Optional[str]=None):
         self.name: str = name
         self.position: kdb.DPoint = position  # Point
         self.direction: kdb.DVector = direction  # Vector
-        self.type: str = port_type
+        self.type = port_type
         self.width: float = width
 
     def rename(self, new_name: str):
@@ -296,7 +310,7 @@ class Port(object):
             ],
             self.width,
         )
-        cell.shapes(layer).insert(port_path)
+        insert_shape(cell, layer, port_path)
 
         # Place a small arrow around the tip of the port
 
@@ -308,13 +322,13 @@ class Port(object):
                 self.position + 0.4 * pin_length * ex - 0.1 * pin_length * ey,
             ]
         )
-        cell.shapes(layer).insert(port_tip)
+        insert_shape(cell, layer, port_tip)
         # pin_rectangle = rectangle(self.position, self.width,
         #                           pin_length, ex, ey)
         # cell.shapes(layer).insert(pin_rectangle)
 
         # Place a text object annotating the name of the port
-        cell.shapes(layer).insert(
+        insert_shape(cell, layer,
             kdb.DText(
                 self.name,
                 kdb.DTrans(kdb.DTrans.R0, self.position.x, self.position.y),
@@ -338,7 +352,7 @@ def place_cell(
     Args:
         parent_cell: cell to place into
         pcell, ports_dict: result of KLayoutPCell.pcell call
-        placement_origin: pya.Point object to be used as origin
+        placement_origin: pya.DPoint object to be used as origin
         relative_to: port name
             the cell is placed so that the port is located at placement_origin
         transform_into:
@@ -354,7 +368,7 @@ def place_cell(
 
     port_offset = placement_origin
     if relative_to is not None:
-        offset = ports[relative_to].position
+        offset = ports[relative_to].position.to_v()
         port_offset = placement_origin - offset
         if transform_into:
             # print(type(pcell))
@@ -364,11 +378,11 @@ def place_cell(
             cell.transform_into(offset_transform)
         else:
             placement_origin = placement_origin - offset
-    parent_cell.insert_cell(cell, placement_origin, 0)
+    cell_insert_cell(parent_cell, cell, placement_origin, 0)
 
     new_ports = deepcopy(ports)
     for port in new_ports.values():
-        port.position += port_offset
+        port.position += port_offset.to_v()
 
     return new_ports
 
@@ -517,7 +531,7 @@ def GDSCell(cell_name: str, filename: str, gds_dir: str) -> Type[PCell]:
             else:
                 # Attempt to include cell_name into layout.
                 # KLayout will automatically prevent duplicate insertion.
-                gdscell = layout.read_cell(cell_name, filepath)
+                gdscell = layout_read_cell(layout, cell_name, filepath)
 
                 # It is possible that gdscell.name is different than cell_name,
                 # in case of a duplicate
@@ -541,7 +555,7 @@ def GDSCell(cell_name: str, filename: str, gds_dir: str) -> Type[PCell]:
             gdscell = self.get_gds_cell(layout)
 
             origin = kdb.DPoint(0, 0)
-            cell.insert_cell(gdscell, origin, 0)
+            cell_insert_cell(cell, gdscell, origin, 0)
             return cell
 
         def draw(self, cell):

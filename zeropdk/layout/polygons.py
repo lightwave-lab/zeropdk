@@ -1,9 +1,13 @@
-from typing import Iterable
+from typing import Iterable, List, Sequence
+from math import pi
 from zeropdk.layout import insert_shape
 from zeropdk.layout.geometry import cross_prod, project, rotate90
-
+from zeropdk.klayout_helper.polygon import ZeroPDKDSimplePolygon
 import klayout.db as kdb
 
+import numpy as np
+
+from zeropdk.types import GeneralLayer
 
 def box(point1, point3, ex, ey):
     """Returns a polygon of a box defined by point1, point3 and orientation ex.
@@ -16,7 +20,7 @@ def box(point1, point3, ex, ey):
 
     point2 = project(point3 - point1, ey, ex) * ey + point1
     point4 = point1 + point3 - point2
-    return kdb.DSimplePolygon([point1, point2, point3, point4])
+    return ZeroPDKDSimplePolygon([point1, point2, point3, point4])
 
 
 def layout_box(cell, layer, point1, point3, ex):
@@ -34,13 +38,13 @@ def layout_box(cell, layer, point1, point3, ex):
     return polygon
 
 
-def rectangle(center, width, height, ex, ey):
+def rectangle(center: kdb.DPoint, width: float, height: float, ex:kdb.DVector, ey:kdb.DVector):
     """
     returns the polygon of a rectangle centered at center,
     aligned with ex, with width and height in microns
 
     Args:
-        center: pya.DPoint (um units)
+        center: kdb.DPoint (um units)
         width (x axis): float (um units)
         height (y axis): float (um unit)
         ex: orientation of x axis
@@ -62,7 +66,7 @@ def square(center, width, ex, ey):
     aligned with ex, with width in microns
 
     Args:
-        center: pya.DPoint (um units)
+        center: kdb.DPoint (um units)
         width: float (um units)
         ex: orientation
     """
@@ -73,14 +77,14 @@ def layout_square(cell, layer, center, width, ex=None):
     """Lays out a square in a layer
 
     Args:
-        center: pya.DPoint (um units)
+        center: kdb.DPoint (um units)
         width: float (um units)
         ex: orientation
 
     """
 
     if ex is None:
-        ex = pya.DPoint(1, 0)
+        ex = kdb.DPoint(1, 0)
     ey = rotate90(ex)
 
     shape = square(center, width, ex, ey)
@@ -92,7 +96,7 @@ def layout_rectangle(cell, layer, center, width, height, ex):
     """Lays out a rectangle
 
     Args:
-        center: pya.DPoint (um units)
+        center: kdb.DPoint (um units)
         width: float (um units)
         height: float (um unit)
         ex: orientation
@@ -107,24 +111,18 @@ def layout_rectangle(cell, layer, center, width, height, ex):
 
 
 # TODO: Reorganize later
-pya = kdb
-import numpy as np
-from math import pi
-
 
 def layout_path(cell, layer: kdb.LayerInfo, point_iterator: Iterable[kdb.DPoint], w: float):
-    """ Simple wrapper for pya.DPath."""
-    path = pya.DPath(list(point_iterator), w, 0, 0).to_itype(cell.layout().dbu)
-    cell.shapes(layer).insert(pya.Path.from_dpath(path))
-
+    """ Simple wrapper for kdb.DPath."""
+    path = kdb.DPath(list(point_iterator), w, 0, 0).to_itype(cell.layout().dbu)
+    insert_shape(cell, layer, kdb.DPath(path))
 
 def layout_path_with_ends(cell, layer: kdb.LayerInfo, point_iterator: Iterable[kdb.DPoint], w: float):
-    """ Simple wrapper for pya.DPath."""
-    dpath = pya.DPath(list(point_iterator), w, w / 2, w / 2)
-    cell.shapes(layer).insert(dpath)
+    """ Simple wrapper for kdb.DPath."""
+    dpath = kdb.DPath(list(point_iterator), w, w / 2, w / 2)
+    insert_shape(cell, layer, dpath)
 
-
-def append_relative(points: list, *relative_vectors):
+def append_relative(points: List[kdb.DPoint], *relative_vectors: kdb.DVector):
     """Appends to list of points in relative steps:
     It takes a list of points, and adds new points to it in relative coordinates.
     For example, if you call append_relative([A, B], C, D), the result will be [A, B, B+C, B+C+D].
@@ -132,14 +130,12 @@ def append_relative(points: list, *relative_vectors):
     try:
         if len(points) > 0:
             origin = points[-1]
+            for vector in relative_vectors:
+                points.append(origin + vector)
+                origin = points[-1]
+        return points
     except TypeError:
         raise TypeError("First argument must be a list of points")
-
-    for vector in relative_vectors:
-        points.append(origin + vector)
-        origin = points[-1]
-    return points
-
 
 from zeropdk.layout.algorithms import sample_function
 
@@ -164,7 +160,7 @@ def layout_ring(cell, layer, center, r, w):
     t, coords = sample_function(arc_function, [0, 2 * pi], tol=0.002 / radius)
 
     # create original waveguide poligon prior to clipping and rotation
-    points_hull = [center + pya.DPoint(x, y) for x, y in zip(*coords)]
+    points_hull = [center + kdb.DPoint(x, y) for x, y in zip(*coords)]  # type: ignore
     del points_hull[-1]
 
     radius = r - w / 2
@@ -172,10 +168,10 @@ def layout_ring(cell, layer, center, r, w):
     t, coords = sample_function(arc_function, [0, 2 * pi], tol=0.002 / radius)
 
     # create original waveguide poligon prior to clipping and rotation
-    points_hole = [center + pya.DPoint(x, y) for x, y in zip(*coords)]
+    points_hole = [center + kdb.DPoint(x, y) for x, y in zip(*coords)]  # type: ignore
     del points_hole[-1]
 
-    dpoly = pya.DPolygon(list(reversed(points_hull)))
+    dpoly = kdb.DPolygon(list(reversed(points_hull)))
     dpoly.insert_hole(points_hole)
     dpoly.compress(True)
     insert_shape(cell, layer, dpoly)
@@ -200,7 +196,7 @@ def layout_circle(
     t, coords = sample_function(arc_function, [0, 2 * np.pi - 0.001], tol=0.002 / r)
 
     # dbu = cell.layout().dbu
-    dpolygon = pya.DSimplePolygon([pya.DPoint(x, y) for x, y in zip(*coords)])
+    dpolygon = ZeroPDKDSimplePolygon([kdb.DPoint(x, y) for x, y in zip(*coords)])  # type: ignore
     # clip dpolygon to bounds
     dpolygon.clip(x_bounds=x_bounds, y_bounds=y_bounds)
     # Transform points (translation + rotation)
@@ -213,7 +209,7 @@ def layout_circle(
 layout_disk = layout_circle
 
 
-def layout_donut(cell, layer, center, r1, r2):
+def layout_donut(cell: kdb.Cell, layer: GeneralLayer, center: kdb.DPoint, r1, r2):
     """Layout donut shape.
     cell: layout cell to place the layout
     layer: which layer to use
@@ -227,14 +223,14 @@ def layout_donut(cell, layer, center, r1, r2):
     arc_function = lambda t: np.array([center.x + r2 * np.cos(t), center.y + r2 * np.sin(t)])
     t, coords = sample_function(arc_function, [0, 2 * np.pi - 0.001], tol=0.002 / r2)
 
-    external_points = [pya.DPoint(x, y) for x, y in zip(*coords)]
+    external_points = [kdb.DPoint(x, y) for x, y in zip(*coords)]  # type: ignore
 
     arc_function = lambda t: np.array([center.x + r1 * np.cos(-t), center.y + r1 * np.sin(-t)])
     t, coords = sample_function(arc_function, [0, 2 * np.pi - 0.001], tol=0.002 / r1)
 
-    internal_points = [pya.DPoint(x, y) for x, y in zip(*coords)]
+    internal_points = [kdb.DPoint(x, y) for x, y in zip(*coords)]  # type: ignore
 
-    dpoly = pya.DPolygon(external_points)
+    dpoly = kdb.DPolygon(external_points)
     dpoly.insert_hole(internal_points)
     insert_shape(cell, layer, dpoly)
     return dpoly
@@ -280,8 +276,8 @@ def layout_section(
     )  # finish the waveguide a little bit after
 
     # create original waveguide poligon prior to clipping and rotation
-    dpoints_list = [pya.DPoint(x, y) for x, y in zip(*coords)]
-    dpolygon = pya.DSimplePolygon(dpoints_list + [pya.DPoint(0, 0)])
+    dpoints_list = [kdb.DPoint(x, y) for x, y in zip(*coords)]  # type: ignore
+    dpolygon = ZeroPDKDSimplePolygon(dpoints_list + [kdb.DPoint(0, 0)])
 
     # clip dpolygon to bounds
     dpolygon.clip(x_bounds=x_bounds, y_bounds=y_bounds)
@@ -343,7 +339,7 @@ def layout_arc(
     )  # start the second to last point a little bit before the final
 
     # create original waveguide poligon prior to clipping and rotation
-    dpoints_list = [pya.DPoint(x, y) for x, y in zip(*coords)]
+    dpoints_list = [kdb.DPoint(x, y) for x, y in zip(*coords)]  # type: ignore
     from zeropdk.layout import waveguide_dpolygon
 
     dpolygon = waveguide_dpolygon(dpoints_list, w, cell.layout().dbu)

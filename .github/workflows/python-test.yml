@@ -18,6 +18,7 @@ jobs:
       - name: Typechecking
         run: |
           mypy zeropdk
+          pyright
       - name: Test with pytest
         run: |
           pytest -s

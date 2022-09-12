@@ -1,7 +1,7 @@
 import random
 import pytest
 from ..context import zeropdk  # noqa
-from zeropdk.layout.polygons import square
+from zeropdk.layout.polygons import rectangle, square
 import klayout.db as kdb
 
 
@@ -15,12 +15,12 @@ def test_square():
 
     # This is true for any rectangle
     p1, p2, p3, p4 = sq.each_point()
-    assert p1 + p3 == p2 + p4
+    # assert p1 + p3 == p2 + p4  # adding points is unsupported.
     assert p2 - p1 == p3 - p4
     assert p3 - p2 == p4 - p1
 
     # True for squares only
-    assert (p2 - p1).norm() == (p4 - p1).norm()
+    assert (p2 - p1).sq_length() == (p4 - p1).sq_length()
 
     # area computes normally
     assert sq.area() == pytest.approx(size ** 2)

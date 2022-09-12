@@ -1,15 +1,17 @@
 import logging
 import os
 from functools import lru_cache, partial
-from typing import Callable, Tuple
+from typing import Callable, Generic, Optional, Tuple, TypeVar, Union
 import numpy as np
 from scipy.interpolate import interp2d
 from zeropdk.layout.algorithms.sampling import sample_function
+from zeropdk.types import PointLike
+import klayout.db as kdb
 
 logger = logging.getLogger(__name__)
 
-
-def rotate(point, angle_rad: float):
+T = TypeVar('T', kdb.DVector, kdb.DPoint)
+def rotate(point: T, angle_rad: float) -> T:
     """Rotates point counter-clockwisely about its origin by an angle given in radians"""
     th = angle_rad
     x, y = point.x, point.y
@@ -17,20 +19,18 @@ def rotate(point, angle_rad: float):
     new_y = y * np.cos(th) + x * np.sin(th)
     return point.__class__(new_x, new_y)
 
-def rotate_deg(point, angle_deg: float):
+def rotate_deg(point: T, angle_deg: float) -> T:
     """Rotates point counter-clockwisely about its origin by an angle given in degrees"""
     angle_rad = angle_deg / 180 * np.pi
     return rotate(point, angle_rad)
 
+def rotate90(point: T) -> T:
+    return rotate(point, np.pi / 2)
 
-rotate90 = lambda point: rotate(point, np.pi / 2)
-
-
-def cross_prod(p1, p2):
+def cross_prod(p1: PointLike, p2: PointLike) -> float:
     return p1.x * p2.y - p1.y * p2.x
 
-
-def find_arc(A, B, C):
+def find_arc(A: kdb.DPoint, B: kdb.DPoint, C: kdb.DPoint) -> Tuple[Optional[kdb.DPoint], float]:
     """Finds the arc of a circle containing points A, B, C.
     Returns the center of the circle, and the radius:
         (O[Point], R)
@@ -45,20 +45,26 @@ def find_arc(A, B, C):
     if np.isclose(area, 0):
         return None, np.inf
 
-    ex = AB / AB.norm()
+    ex = AB / AB.length()
     ey = rotate90(ex)
 
-    D = (A + B) / 2
-    E = (B + C) / 2
+    D = A + (B - A) / 2
+    E = B + (C - B) / 2
+
+    X = kdb.DPoint(0, 0)
+    XE = E - X
+    XD = D - X
 
     LHS_sys = np.array([[BC * ex, BC * ey], [AB * ex, AB * ey]])
-    RHS_sys = np.array([[E * BC], [D * AB]])
+    RHS_sys = np.array([[XE * BC], [XD * AB]])
 
     sol = np.linalg.inv(LHS_sys).dot(RHS_sys)
+    h: float
+    k: float
     h, k = sol.flatten()
 
-    O = h * ex + k * ey
-    R = (A - O).norm()
+    O = X + h * ex + k * ey
+    R = (A - O).length()
     return O, R
 
 
@@ -80,7 +86,7 @@ def project(v, ex, ey=None):
     return a
 
 
-def curve_length(curve, t0=0, t1=1):
+def curve_length(curve, t0=0, t1=1) -> float:
     """Computes the total length of a curve.
 
     Args:
@@ -110,7 +116,7 @@ def curve_length(curve, t0=0, t1=1):
     return ds.sum()
 
 
-def manhattan_intersection(vertical_point, horizontal_point, ex):
+def manhattan_intersection(vertical_point, horizontal_point, ex: kdb.DVector):
     """returns the point that intersects vertical_point's x coordinate
     and horizontal_point's y coordinate.
 
@@ -263,7 +269,7 @@ def _curvature_penalty(P0, P1, P2, P3):
     return penalty
 
 
-def fix_angle(angle):
+def fix_angle(angle: float) -> float:
     """Returns the angle in the -pi to pi range"""
     return (angle + np.pi) % (2 * np.pi) - np.pi
 
@@ -488,8 +494,6 @@ def bezier_optimal(P0, P3, angle0: float, angle3: float):
 # Allow us to use these functions directly with pya.DPoints
 
 try:
-    import klayout.db as pya
-
     _bezier_optimal_pure = bezier_optimal
 
     def bezier_optimal(P0, P3, angle0: float, angle3: float):
@@ -532,7 +536,7 @@ try:
         #     np.append(bezier_point_coordinates_sampled, np.atleast_2d(bezier_point_coordinates(1 + .001 / scale)).T,
         #               axis=1)  # finish the waveguide a little bit after
 
-        return [pya.DPoint(x, y) for (x, y) in zip(*(bezier_point_coordinates_sampled))]
+        return [kdb.DPoint(x, y) for (x, y) in zip(*(bezier_point_coordinates_sampled))]  # type: ignore
 
 except ImportError:
     logger.error("klayout not detected. It is a requirement of zeropdk for now.")

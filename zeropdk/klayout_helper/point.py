@@ -7,24 +7,23 @@ klayout.db.Point Extensions:
   - P.norm()
   - P.normalize() = P / P.norm()
 """
-from numbers import Number
-from math import sqrt
+from contextlib import contextmanager
+from numbers import Real
 from klayout.db import Point, DPoint, DVector, Vector
 
 try:
     import numpy as np
-
     MODULE_NUMPY = True
 except ImportError:
     MODULE_NUMPY = False
 
 # Point-like classes
-PointLike = (Point, DPoint, DVector, Vector)
+KLayoutPoints = (Point, DPoint, DVector, Vector)
 
 
 def pyaPoint__rmul__(self, factor):
     """This implements factor * P"""
-    if isinstance(factor, Number):
+    if isinstance(factor, Real):
         return self.__class__(self.x * factor, self.y * factor)
     elif MODULE_NUMPY and isinstance(factor, np.ndarray):  # ideally this is never called
         return factor.__mul__(self)
@@ -34,11 +33,11 @@ def pyaPoint__rmul__(self, factor):
 
 def pyaPoint__mul__(self, factor):
     """This implements P * factor"""
-    if isinstance(factor, Number):
+    if isinstance(factor, Real):
         return self.__class__(self.x * factor, self.y * factor)
     elif MODULE_NUMPY and isinstance(factor, np.ndarray):  # Numpy can multiply any object
         return factor.__mul__(self)
-    elif isinstance(factor, PointLike):
+    elif isinstance(factor, KLayoutPoints):
         return self.x * factor.x + self.y * factor.y
     else:
         return NotImplemented
@@ -55,7 +54,7 @@ def pyaPoint__deepcopy__(self, memo):
 
 def pyaPoint_norm(self):
     """This implements the L2 norm"""
-    return sqrt(self.x**2 + self.y**2)
+    return self.abs()
 
 
 def pyaPoint_normalize(self):
@@ -80,21 +79,33 @@ def pyaPoint__init__(self, *args):
 def pyaPoint__getstate__(self):
     return (self.x, self.y)
 
-
 def pyaPoint__setstate__(self, state):
     self.x, self.y = state
 
 def pyaPoint__repr__(self):
     return f"{self.__class__.__name__}({self.x}, {self.y})"
 
-for klass in PointLike:
-    klass.__init__ = pyaPoint__init__
-    klass.__rmul__ = pyaPoint__rmul__
-    klass.__mul__ = pyaPoint__mul__
-    klass.__truediv__ = pyaPoint__truediv__
-    klass.__deepcopy__ = pyaPoint__deepcopy__
-    klass.__getstate__ = pyaPoint__getstate__
-    klass.__setstate__ = pyaPoint__setstate__
-    klass.__repr__ = pyaPoint__repr__
-    klass.normalize = pyaPoint_normalize
-    klass.norm = pyaPoint_norm
+@contextmanager
+def make_points_picklable():
+    old_methods = dict()
+    for klass in KLayoutPoints:
+        old_methods[(klass, "__getstate__")] = getattr(klass, "__getstate__", None)
+        old_methods[(klass, "__setstate__")] = getattr(klass, "__setstate__", None)
+        klass.__getstate__ = pyaPoint__getstate__
+        klass.__setstate__ = pyaPoint__setstate__
+    yield
+    for klass in KLayoutPoints:
+        klass.__getstate__ = old_methods[(klass, "__getstate__")]
+        klass.__setstate__ = old_methods[(klass, "__setstate__")]
+
+def patch_points():
+    make_points_picklable()
+    for klass in KLayoutPoints:
+        klass.__init__ = pyaPoint__init__
+        klass.__rmul__ = pyaPoint__rmul__
+        klass.__mul__ = pyaPoint__mul__
+        klass.__truediv__ = pyaPoint__truediv__
+        klass.__deepcopy__ = pyaPoint__deepcopy__
+        klass.__repr__ = pyaPoint__repr__
+        klass.normalize = pyaPoint_normalize
+        klass.norm = pyaPoint_norm

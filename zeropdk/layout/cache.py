@@ -9,6 +9,7 @@ from functools import partial, wraps
 from typing import Any, Type, Union, Callable, Dict
 
 import klayout.db as pya
+from zeropdk.klayout_helper.point import make_points_picklable
 from zeropdk.pcell import PCell
 
 logger = logging.getLogger(__name__)
@@ -189,10 +190,11 @@ def cache_cell(
             cache_fpath_pkl = os.path.join(cache_dir, cache_fname_pkl)
 
             if os.path.isfile(cache_fpath_gds) and os.path.isfile(cache_fpath_pkl):
-                with open(cache_fpath_pkl, "rb") as file:
-                    ports, read_short_hash_pcell, cellname = pickle.load(
-                        file
-                    )  # pylint: disable=unused-variable
+                with make_points_picklable():
+                    with open(cache_fpath_pkl, "rb") as file:
+                        ports, read_short_hash_pcell, cellname = pickle.load(
+                            file
+                        )  # pylint: disable=unused-variable
 
                 logger.debug(f"Reading from cache: {cache_fname}: {cellname}, {ports}")
                 print("r", end="", flush=True)
@@ -221,8 +223,9 @@ def cache_cell(
                 save_options = pya.SaveLayoutOptions()
                 save_options.gds2_write_file_properties = True
                 empty_layout.write(cache_fpath_gds, save_options)
-                with open(cache_fpath_pkl, "wb") as file:
-                    pickle.dump((ports, short_hash_pcell, cellname), file)
+                with make_points_picklable():
+                    with open(cache_fpath_pkl, "wb") as file:
+                        pickle.dump((ports, short_hash_pcell, cellname), file)
 
                 # Make sure we delete the empty_layout to not grow
                 # helps debug

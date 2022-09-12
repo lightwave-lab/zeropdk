@@ -1,0 +1,53 @@
+"""Extends kdb.Cell object by introducing or replacing with the following methods:
+- Cell.insert_cell
+- Cell.shapes
+"""
+
+from typing import Type, Union
+from functools import wraps
+import klayout.db as kdb
+from klayout.db import Cell, DPoint, DVector
+
+from zeropdk.klayout_helper import as_vector
+
+
+def cell_insert_cell(
+    cell: Cell, other_cell: Cell, origin: Union[DPoint, DVector], angle_deg: float
+) -> Cell:
+    mag = 1
+    rot = angle_deg
+    mirrx = False
+    # u = DPoint(origin)
+    u = as_vector(origin)
+    trans = kdb.DCplxTrans(mag, rot, mirrx, u)
+
+    cell.insert(kdb.DCellInstArray(other_cell.cell_index(), trans))
+    return cell
+
+
+def patch_cell():
+    Cell.insert_cell = cell_insert_cell  # type: ignore
+
+    def override_layer(method):
+        old_method = method
+
+        @wraps(old_method)
+        def new_method(self: Cell, layer, *args, **kwargs):
+            if isinstance(layer, (kdb.LayerInfo, str)):
+                layer_index = self.layout().layer(layer)
+            else:
+                layer_index = layer
+            return old_method(self, layer_index, *args, **kwargs)
+
+        return new_method
+
+    # All the methods that have layer_index as first argument
+    # I would like to allow LayerInfo to be passed as parameter
+    # Taken from https://www.klayout.de/doc-qt5/code/class_Cell.html
+    Cell.shapes = override_layer(Cell.shapes)  # type: ignore
+    Cell.begin_shapes_rec = override_layer(Cell.begin_shapes_rec)  # type: ignore
+    Cell.bbox_per_layer = override_layer(Cell.bbox_per_layer)  # type: ignore
+    Cell.dbbox_per_layer = override_layer(Cell.dbbox_per_layer)  # type: ignore
+    Cell.each_shape = override_layer(Cell.each_shape)  # type: ignore
+    Cell.each_touching_shape = override_layer(Cell.each_touching_shape)  # type: ignore
+    Cell.each_overlapping_shape = override_layer(Cell.each_overlapping_shape)  # type: ignore

@@ -10,22 +10,25 @@ TODO: make some of the functions in util use these.
 """
 
 from itertools import repeat
-from typing import List, Tuple
+from numbers import Real
+from typing import List, Sequence, Tuple, TypeVar, Union
 import numpy as np
 from numpy import cos, sin, pi, sqrt
 from functools import reduce
 from zeropdk.layout.geometry import curve_length, cross_prod, find_arc
 from zeropdk.exceptions import ZeroPDKUserError
+from zeropdk.layout import GeneralLayer
+from zeropdk.klayout_helper.polygon import ZeroPDKDSimplePolygon
 
-import klayout.db as pya
+import klayout.db as kdb
 
 debug = False
 
-def norm(self):
-    return self.norm()
-
-def _remove_duplicates(point_tuple_list: List[Tuple[pya.DPoint, ...]]) -> List[Tuple[pya.DPoint, ...]]:
+T = TypeVar('T')
+def _remove_duplicates(point_tuple_list: List[Tuple[kdb.DPoint, T]]) -> List[Tuple[kdb.DPoint, T]]:
     """ Iterates through point_tuple_list and deletes entries with consecutive duplicate points."""
+
+    assert isinstance(point_tuple_list[0][0], kdb.DPoint), "Expected list of points."
 
     if len(point_tuple_list) < 2:
         return point_tuple_list
@@ -33,13 +36,13 @@ def _remove_duplicates(point_tuple_list: List[Tuple[pya.DPoint, ...]]) -> List[T
     unique_points = [point_tuple_list[0]]
     previous_point = point_tuple_list[0]
     for p_tuple in point_tuple_list[1:]:
-        if (p_tuple[0] - previous_point[0]).norm() > 0:
+        if (p_tuple[0] - previous_point[0]).length() > 0:
             unique_points.append(p_tuple)
             previous_point = p_tuple
 
     return unique_points
 
-def waveguide_dpolygon(points_list, width, dbu, smooth=True):
+def waveguide_dpolygon(points_list: Sequence[kdb.DPoint], width: Union[float, Sequence[float]], dbu: float, smooth=True) -> ZeroPDKDSimplePolygon:
     """Returns a polygon outlining a waveguide.
 
     This was updated over many iterations of failure. It can be used for both
@@ -47,7 +50,7 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
     than klayout's Path because it can have varying width.
 
     Args:
-        points_list: list of pya.DPoint (at least 2 points)
+        points_list: list of kdb.DPoint (at least 2 points)
         width (microns): constant, 2-element list, or list.
             If 2-element list, then widths are interpolated alongside the waveguide.
             If list, then it has to either have the same length as points.
@@ -62,7 +65,7 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
         return
 
     # Prepares a joint point and width iterators
-    try:
+    if isinstance(width, Sequence):
         if len(width) == len(points_list):
             width_iterator = iter(width)
         elif len(width) == 2:
@@ -72,25 +75,28 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
             L = curve_length(points_list)
             distance = 0
             widths_list = [width[0]]
-            widths_func = lambda t: (1 - t) * width[0] + t * width[1]
+            start_width, end_width = width
+            widths_func = lambda t: (1 - t) * start_width + t * end_width
             old_point = points_list[0]
             for point in points_list[1:]:
-                distance += norm(point - old_point)
+                distance += (point - old_point).length()
                 old_point = point
                 widths_list.append(widths_func(distance / L))
             width_iterator = iter(widths_list)
         else:
             width_iterator = repeat(width[0])
-    except TypeError:
+    elif isinstance(width, Real):
         width_iterator = repeat(width)
-    finally:
-        points_iterator = iter(points_list)
+    else:
+        raise TypeError("Unexpected width parameter. Must be float or list of floats.")
 
-    points_low = list()
-    points_high = list()
+    points_iterator = iter(points_list)
+
+    points_low: List[kdb.DPoint] = list()
+    points_high: List[kdb.DPoint] = list()
 
     def cos_angle(point1, point2):
-        cos_angle = point1 * point2 / norm(point1) / norm(point2)
+        cos_angle = point1 * point2 / point1.abs() / point2.abs()
 
         # ensure it's between -1 and 1 (nontrivial numerically)
         if abs(cos_angle) > 1:
@@ -99,7 +105,7 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
             return cos_angle
 
     def sin_angle(point1, point2):
-        return cross_prod(point1, point2) / norm(point1) / norm(point2)
+        return cross_prod(point1, point2) / point1.abs() / point2.abs()
 
     point_width_list = list(zip(points_iterator, width_iterator))
     # Remove duplicate consecutive points here, because it would create
@@ -115,10 +121,10 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
 
     delta = next_point - first_point
     theta = np.arctan2(delta.y, delta.x)
-    first_high_point = first_point + 0.5 * first_width * pya.DPoint(
+    first_high_point = first_point + 0.5 * first_width * kdb.DVector(
         cos(theta + pi / 2), sin(theta + pi / 2)
     )
-    first_low_point = first_point + 0.5 * first_width * pya.DPoint(
+    first_low_point = first_point + 0.5 * first_width * kdb.DVector(
         cos(theta - pi / 2), sin(theta - pi / 2)
     )
     points_high.append(first_high_point)
@@ -142,13 +148,13 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
         # and the width has to be bigger than the smallest distance between
         # two points.
 
-        is_small = min(delta_next.norm(), delta_prev.norm()) < width
+        is_small = min(delta_next.length(), delta_prev.length()) < width
         is_arc = cos_angle(delta_next, delta_prev) > cos(30 * pi / 180)
         is_arc = is_arc and is_small
         center_arc, radius = find_arc(prev_point, point, next_point)
-        if is_arc and radius < np.inf:  # algorithm 1
+        if is_arc and radius < np.inf and center_arc is not None:  # algorithm 1
             ray = point - center_arc
-            ray /= ray.norm()
+            ray /= ray.abs()
             # if orientation is positive, the arc is going counterclockwise
             orientation = (cross_prod(ray, delta_prev) > 0) * 2 - 1
             points_low.append(point + orientation * width * ray / 2)
@@ -157,39 +163,39 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
             theta_prev = np.arctan2(delta_prev.y, delta_prev.x)
             theta_next = np.arctan2(delta_next.y, delta_next.x)
 
-            next_point_high = next_point + 0.5 * next_width * pya.DPoint(
+            next_point_high = next_point + 0.5 * next_width * kdb.DVector(
                 cos(theta_next + pi / 2), sin(theta_next + pi / 2)
             )
-            next_point_low = next_point + 0.5 * next_width * pya.DPoint(
+            next_point_low = next_point + 0.5 * next_width * kdb.DVector(
                 cos(theta_next - pi / 2), sin(theta_next - pi / 2)
             )
 
-            forward_point_high = point + 0.5 * width * pya.DPoint(
+            forward_point_high = point + 0.5 * width * kdb.DVector(
                 cos(theta_next + pi / 2), sin(theta_next + pi / 2)
             )
-            forward_point_low = point + 0.5 * width * pya.DPoint(
+            forward_point_low = point + 0.5 * width * kdb.DVector(
                 cos(theta_next - pi / 2), sin(theta_next - pi / 2)
             )
 
-            prev_point_high = prev_point + 0.5 * prev_width * pya.DPoint(
+            prev_point_high = prev_point + 0.5 * prev_width * kdb.DVector(
                 cos(theta_prev + pi / 2), sin(theta_prev + pi / 2)
             )
-            prev_point_low = prev_point + 0.5 * prev_width * pya.DPoint(
+            prev_point_low = prev_point + 0.5 * prev_width * kdb.DVector(
                 cos(theta_prev - pi / 2), sin(theta_prev - pi / 2)
             )
 
-            backward_point_high = point + 0.5 * width * pya.DPoint(
+            backward_point_high = point + 0.5 * width * kdb.DVector(
                 cos(theta_prev + pi / 2), sin(theta_prev + pi / 2)
             )
-            backward_point_low = point + 0.5 * width * pya.DPoint(
+            backward_point_low = point + 0.5 * width * kdb.DVector(
                 cos(theta_prev - pi / 2), sin(theta_prev - pi / 2)
             )
 
             fix_angle = lambda theta: ((theta + pi) % (2 * pi)) - pi
 
             # High point decision
-            next_high_edge = pya.DEdge(forward_point_high, next_point_high)
-            prev_high_edge = pya.DEdge(backward_point_high, prev_point_high)
+            next_high_edge = kdb.DEdge(forward_point_high, next_point_high)
+            prev_high_edge = kdb.DEdge(backward_point_high, prev_point_high)
 
             if next_high_edge.crossed_by(prev_high_edge):
                 intersect_point = next_high_edge.crossing_point(prev_high_edge)
@@ -200,11 +206,11 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
                     points_high.append(backward_point_high)
                     points_high.append(forward_point_high)
                 else:
-                    points_high.append((backward_point_high + forward_point_high) * 0.5)
+                    points_high.append((backward_point_high + forward_point_high.to_v()) * 0.5)
 
             # Low point decision
-            next_low_edge = pya.DEdge(forward_point_low, next_point_low)
-            prev_low_edge = pya.DEdge(backward_point_low, prev_point_low)
+            next_low_edge = kdb.DEdge(forward_point_low, next_point_low)
+            prev_low_edge = kdb.DEdge(backward_point_low, prev_point_low)
 
             if next_low_edge.crossed_by(prev_low_edge):
                 intersect_point = next_low_edge.crossing_point(prev_low_edge)
@@ -215,16 +221,16 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
                     points_low.append(backward_point_low)
                     points_low.append(forward_point_low)
                 else:
-                    points_low.append((backward_point_low + forward_point_low) * 0.5)
+                    points_low.append((backward_point_low + forward_point_low.to_v()) * 0.5)
 
     last_point, last_width = point_width_list[-1]
     point, width = point_width_list[-2]
     delta = last_point - point
     theta = np.arctan2(delta.y, delta.x)
-    final_high_point = last_point + 0.5 * last_width * pya.DPoint(
+    final_high_point = last_point + 0.5 * last_width * kdb.DPoint(
         cos(theta + pi / 2), sin(theta + pi / 2)
     )
-    final_low_point = last_point + 0.5 * last_width * pya.DPoint(
+    final_low_point = last_point + 0.5 * last_width * kdb.DPoint(
         cos(theta - pi / 2), sin(theta - pi / 2)
     )
     if (final_high_point - points_high[-1]) * delta > 0:
@@ -243,12 +249,12 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
             return point_list
         elif len(point_list) < 2:
             curr_edge = point - point_list[-1]
-            if norm(curr_edge) > 0:
+            if curr_edge.sq_abs() > 0:
                 point_list.append(point)
                 return point_list
 
         curr_edge = point - point_list[-1]
-        if norm(curr_edge) > 0:
+        if curr_edge.sq_abs() > 0:
             prev_edge = point_list[-1] - point_list[-2]
 
             # Only add new point if the area of the triangle built with
@@ -258,7 +264,7 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
                     # avoid corners when smoothing
                     if cos_angle(curr_edge, prev_edge) > cos(130 / 180 * pi):
                         point_list.append(point)
-                    elif norm(curr_edge) > norm(prev_edge):
+                    elif curr_edge.sq_abs() > prev_edge.sq_abs():
                         # edge case when there is prev_edge is small and
                         # needs to be deleted to get rid of the corner
                         point_list[-1] = point
@@ -280,18 +286,18 @@ def waveguide_dpolygon(points_list, width, dbu, smooth=True):
     # polygon_dpoints = points_high + list(reversed(points_low))
     # polygon_dpoints = list(reduce(smooth_append, polygon_dpoints, list()))
     polygon_dpoints = smooth_points_high + list(reversed(smooth_points_low))
-    return pya.DSimplePolygon(polygon_dpoints)
+    return ZeroPDKDSimplePolygon(polygon_dpoints)
 
 
-def layout_waveguide(cell, layer, points_list, width, smooth=False):
+def layout_waveguide(cell: kdb.Cell, layer: GeneralLayer, points_list: Sequence[kdb.DPoint], width: Union[float, Sequence[float]], smooth=False):
     """Lays out a waveguide (or trace) with a certain width along given points.
 
     This is very useful for laying out Bezier curves with or without adiabatic tapers.
 
     Args:
         cell: cell to place into
-        layer: layer to place into. It is done with cell.shapes(layer).insert(pya.Polygon)
-        points_list: list of pya.DPoint (at least 2 points)
+        layer: layer to place into. It is done with cell.shapes(layer).insert(kdb.Polygon)
+        points_list: list of kdb.DPoint (at least 2 points)
         width (microns): constant, 2-element list, or list.
             If 2-element list, then widths are interpolated alongside the waveguide.
             If list, then it has to either have the same length as points.
@@ -315,8 +321,8 @@ def layout_waveguide_angle(cell, layer, points_list, width, angle):
 
     Args:
         cell: cell to place into
-        layer: layer to place into. It is done with cell.shapes(layer).insert(pya.Polygon)
-        points_list: list of pya.DPoint (at least 2 points)
+        layer: layer to place into. It is done with cell.shapes(layer).insert(kdb.Polygon)
+        points_list: list of kdb.DPoint (at least 2 points)
         width (microns): constant, 2-element list, or list.
             If 2-element list, then widths are interpolated alongside the waveguide.
             If list, then it has to either have the same length as points.
@@ -333,8 +339,8 @@ def layout_waveguide_angle2(cell, layer, points_list, width, angle_from, angle_t
 
     Args:
         cell: cell to place into
-        layer: layer to place into. It is done with cell.shapes(layer).insert(pya.Polygon)
-        points_list: list of pya.DPoint (at least 2 points)
+        layer: layer to place into. It is done with cell.shapes(layer).insert(kdb.Polygon)
+        points_list: list of kdb.DPoint (at least 2 points)
         width (microns): constant, 2-element list, or list.
             If 2-element list, then widths are interpolated alongside the waveguide.
             If list, then it has to either have the same length as points.
@@ -359,7 +365,7 @@ def layout_waveguide_angle2(cell, layer, points_list, width, angle_from, angle_t
             widths_func = lambda t: (1 - t) * width[0] + t * width[1]
             old_point = points_list[0]
             for point in points_list[1:]:
-                distance += norm(point - old_point)
+                distance += (point - old_point).abs()
                 old_point = point
                 widths_list.append(widths_func(distance / L))
             width_iterator = iter(widths_list)
@@ -383,13 +389,13 @@ def layout_waveguide_angle2(cell, layer, points_list, width, angle_from, angle_t
         angle = angle_list[i]
         theta = angle * pi / 180
 
-        point_high = point + 0.5 * width * pya.DPoint(cos(theta + pi / 2), sin(theta + pi / 2))
+        point_high = point + 0.5 * width * kdb.DPoint(cos(theta + pi / 2), sin(theta + pi / 2))
         points_high.append(point_high)
-        point_low = point + 0.5 * width * pya.DPoint(cos(theta - pi / 2), sin(theta - pi / 2))
+        point_low = point + 0.5 * width * kdb.DPoint(cos(theta - pi / 2), sin(theta - pi / 2))
         points_low.append(point_low)
 
     polygon_points = points_high + list(reversed(points_low))
 
-    poly = pya.DSimplePolygon(polygon_points)
+    poly = kdb.DSimplePolygon(polygon_points)
     cell.shapes(layer).insert(poly)
     return poly

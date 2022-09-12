@@ -1,13 +1,15 @@
 from typing import Callable, Tuple
 import warnings
 import numpy as np
+import numpy.typing as npt
 import pytest
-from zeropdk.klayout_extend.layout import layout_read_cell
+from zeropdk.klayout_helper.layout import layout_read_cell
 
 from zeropdk.layout.waveguide_rounding import compute_rounded_path, layout_waveguide_from_points
 from ..context import zeropdk  # noqa
 from zeropdk.layout.waveguides import waveguide_dpolygon
 from zeropdk.layout import insert_shape
+from zeropdk.klayout_helper import as_point
 
 import klayout.db as kdb
 
@@ -25,15 +27,17 @@ def top_cell():
 
 def test_waveguide(top_cell: Callable[[], Tuple[kdb.Cell, kdb.Layout]]):
     t = np.linspace(-1, 1, 100)
-    ex = kdb.DPoint(1, 0)
-    ey = kdb.DPoint(0, 1)
-
+    ex = kdb.DVector(1, 0)
+    ey = kdb.DVector(0, 1)
+    origin = kdb.DPoint(0, 0)
     # list of points depicting a parabola
-    points_list = 100 * t * ex + 100 * t ** 2 * ey
+    points_list: npt.NDArray[np.object_] = origin + 100 * t * ex + 100 * t ** 2 * ey  # type: ignore
     dbu = 0.001
     width = 1
-
-    wg = waveguide_dpolygon(points_list, width, dbu, smooth=True)
+    assert isinstance(points_list, np.ndarray)
+    assert isinstance(points_list[0], kdb.DPoint)
+    assert points_list.shape == (100,)
+    wg = waveguide_dpolygon(points_list, width, dbu, smooth=True)  # type: ignore
 
     # write to test_waveguide.gds (we should see a parabola)
     TOP, layout = top_cell()
@@ -49,30 +53,29 @@ def test_waveguide_rounding(top_cell: Callable[[], Tuple[kdb.Cell, kdb.Layout]])
             points.extend(item.get_points())
 
         dpath = kdb.DPath(points, width, 0, 0)
-
-        cell.shapes(layer).insert(dpath)
+        insert_shape(cell, layer, dpath)
 
     def trace_reference_path(cell, layer, points, width):
         dpath = kdb.DPath(points, width, 0, 0)
-        cell.shapes(layer).insert(dpath)
+        insert_shape(cell, layer, dpath)
 
     TOP, layout = top_cell()
     layer = kdb.LayerInfo(10, 0)
     layerRec = kdb.LayerInfo(1001, 0)
 
-    ex, ey = kdb.DPoint(1, 0), kdb.DPoint(0, 1)
+    ex, ey = kdb.DVector(1, 0), kdb.DVector(0, 1)
 
     # Begin tests
 
     points = [0 * ex, 10 * ex, 10 * (ex + ey), 30 * ex]
-    origin = 0 * ey
+    origin = as_point(0 * ey)
     points = [origin + point for point in points]
     x = compute_rounded_path(points, 3)
     trace_rounded_path(TOP, layer, x, 0.5)
     trace_reference_path(TOP, layerRec, points, 0.5)
 
     points = [0 * ex, 10 * ex, 5 * (ex - ey), 17 * ex, 30 * ex]
-    origin = 30 * ey
+    origin = as_point(30 * ey)
     points = [origin + point for point in points]
     x = compute_rounded_path(points, 3)
     trace_rounded_path(TOP, layer, x, 0.5)
@@ -90,14 +93,14 @@ def test_waveguide_rounding(top_cell: Callable[[], Tuple[kdb.Cell, kdb.Layout]])
                 (d + 2 * radius) * ey,
             ]
             points += [origin + displacement for displacement in displacements]
-        origin = 15 * ex + 40 * ey
+        origin = as_point(15 * ex + 40 * ey)
         points = [origin + point for point in points]
         x = compute_rounded_path(points, radius)
         trace_rounded_path(TOP, layer, x, 0.5)
         trace_reference_path(TOP, layerRec, points, 0.5)
 
     # Layout tapered waveguide
-    points = [
+    vectors = [
         0 * ex,
         100 * ex,
         100 * ex + 20 * ey,
@@ -107,18 +110,18 @@ def test_waveguide_rounding(top_cell: Callable[[], Tuple[kdb.Cell, kdb.Layout]])
     ]
 
     # Untapered
-    origin = 40 * ex
-    points_ = [origin + point for point in points]
+    origin = as_point(40 * ex)
+    points_ = [origin + v for v in vectors]
     layout_waveguide_from_points(TOP, layer, points_, 0.5, 5)
 
     # Tapered
-    origin = 40 * ex + 40 * ey
-    points_ = [origin + point for point in points]
+    origin = as_point(40 * ex + 40 * ey)
+    points_ = [origin + vector for vector in vectors]
     layout_waveguide_from_points(TOP, layer, points_, 0.5, 5, taper_width=3, taper_length=10)
 
 
     # Stress test about ClearanceRewind when forward would work.
-    origin = 40 * ex + 80 * ey
+    origin = as_point(40 * ex + 80 * ey)
     points = [
         0 * ex,
         222 * ey,
@@ -130,7 +133,7 @@ def test_waveguide_rounding(top_cell: Callable[[], Tuple[kdb.Cell, kdb.Layout]])
 
     # Stress test on trying forward first after ClearanceRewind.
 
-    origin = 60 * ex + 80 * ey
+    origin = as_point(60 * ex + 80 * ey)
     points = [
         0 * ex,
         222 * ey,
@@ -141,7 +144,7 @@ def test_waveguide_rounding(top_cell: Callable[[], Tuple[kdb.Cell, kdb.Layout]])
     # breakpoint()
     layout_waveguide_from_points(TOP, layer, points_, 5, 230)
 
-    origin = 80 * ex + 80 * ey
+    origin = as_point(80 * ex + 80 * ey)
     points = [
         0 * ex,
         100 * ey,
@@ -154,10 +157,9 @@ def test_waveguide_rounding(top_cell: Callable[[], Tuple[kdb.Cell, kdb.Layout]])
         layout_waveguide_from_points(TOP, layer, points_, 5, 550)
 
     TOP_reference = layout_read_cell(layout, "TOP", "tests/test_waveguide_rounding_truth.gds")
-
-    new_waveguides = kdb.Region(TOP.shapes(layer))
-    ref_waveguides = kdb.Region(TOP_reference.shapes(layer))
-    new_waveguides -= ref_waveguides
-    assert new_waveguides.area() == 0
+    layer_index = layout.layer(layer)
+    new_waveguides = kdb.Region(TOP.shapes(layer_index))
+    ref_waveguides = kdb.Region(TOP_reference.shapes(layer_index))
+    assert (new_waveguides ^ ref_waveguides).area() == 0  # XOR operation
 
     TOP.write("tests/tmp/test_waveguide_rounding.gds")

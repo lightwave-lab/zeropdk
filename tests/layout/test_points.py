@@ -3,6 +3,9 @@ import numpy as np
 from ..context import zeropdk  # noqa
 
 import klayout.db as kdb
+from zeropdk.klayout_helper.point import patch_points
+
+# patch_points()
 
 
 def random_point(Point, a=-10, b=10):
@@ -16,25 +19,25 @@ def random_point(Point, a=-10, b=10):
 
 
 def test_add_sub():
-    p1 = random_point(kdb.Point)
-    p2 = random_point(kdb.Point)
+    p = random_point(kdb.DPoint)
+    v = random_point(kdb.DPoint)
 
-    sump = p1 + p2
-    assert sump.x == p1.x + p2.x
-    assert sump.y == p1.y + p2.y
-    assert isinstance(sump, kdb.Point)
+    sump = p + v  # type: ignore
+    assert sump.x == p.x + v.x
+    assert sump.y == p.y + v.y
+    assert isinstance(sump, kdb.DPoint)
 
-    diffp = p2 - p1
-    assert diffp.x == p2.x - p1.x
-    assert diffp.y == p2.y - p1.y
-    assert isinstance(diffp, kdb.Vector)
+    diffp = v - p
+    assert diffp.x == v.x - p.x
+    assert diffp.y == v.y - p.y
+    assert isinstance(diffp, kdb.DVector)
 
-    assert p1 == (sump - diffp) / 2
-    assert p2 == (sump + diffp) / 2
+    assert p == (sump - diffp) / 2
+    assert v == (sump + diffp) / 2
 
 
 def test_mul():
-    p_classes = (kdb.Point, kdb.Vector)
+    p_classes = (kdb.Point, kdb.Vector, kdb.DPoint, kdb.DVector)
 
     for p_class in p_classes:
         p1 = random_point(kdb.Vector)
@@ -52,7 +55,7 @@ def test_numpy():
     ex = kdb.Point(1, 0)
 
     # Point should consume a numpy array and produce a np.array of points
-    point_array = t * ex
+    point_array = t * ex  # type: ignore
     assert isinstance(point_array, np.ndarray)
     assert np.all([0 * ex, 1 * ex, 2 * ex] == point_array)
 

@@ -13,7 +13,7 @@ def test_basic_usage():
 
     pc.orange = 2
     assert pc.orange == 2
-    pc["orange"] == 2  # it is also accessible as a dictionary
+    assert pc["orange"] == 2  # it is also accessible as a dictionary
 
     with pytest.raises(TypeError, match="Cannot set 'orange' to 'blah'"):
         pc.orange = "blah"
@@ -43,4 +43,4 @@ def test_quirky_cases():
     with pytest.raises(
         TypeError, match="'ParamContainer' object does not support item assignment"
     ):
-        pc["orange"] = 2
+        pc["orange"] = 2  # type: ignore

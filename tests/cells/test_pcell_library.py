@@ -1,6 +1,7 @@
 import pytest
 from ..context import zeropdk  # noqa
 from zeropdk.default_library import io
+from zeropdk.klayout_helper.cell import cell_insert_cell
 
 import klayout.db as kdb
 
@@ -32,5 +33,5 @@ def test_pad_pcell(top_cell):
     cell, ports = pad.new_cell(layout)
     assert "el0" in ports
     origin, angle = kdb.DPoint(0, 0), 0
-    TOP.insert_cell(cell, origin, angle)
+    cell_insert_cell(TOP, cell, origin, angle)
     TOP.write("tests/tmp/pad.gds")

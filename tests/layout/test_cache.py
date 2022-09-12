@@ -6,6 +6,7 @@ from shutil import rmtree
 from zeropdk.layout.cache import cache_cell, produce_hash
 from zeropdk.layout.geometry import rotate, rotate90
 from zeropdk.pcell import PCell, ParamContainer, Port, TypeDouble, port_to_pin_helper
+from zeropdk.klayout_helper.layout import layout_read_cell
 import klayout.db as kdb
 
 CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "tmp", "cache")
@@ -47,7 +48,7 @@ class EmptyPCell(PCell): # type: ignore
 
         origin, ex, ey = self.origin_ex_ey()
         waveguide_width = 1
-        layer = layout.layer(kdb.LayerInfo(1, 0))
+        layer = kdb.LayerInfo(1, 0)
 
         ports = [Port("opt1", origin, ex, waveguide_width)]
         port_to_pin_helper(ports, cell, layer)
@@ -81,7 +82,7 @@ def test_new_pcell(top_cell):
     layout2 = kdb.Layout()
     layout2.dbu = 0.001
 
-    TOP2: kdb.Cell = layout2.read_cell("TOP", "tests/tmp/single_port.gds")
+    TOP2: kdb.Cell = layout_read_cell(layout2, "TOP", "tests/tmp/single_port.gds")
     assert TOP2.name == "TOP"
     cell_list = [c.name for c in layout2.each_cell()]
     short_hash = produce_hash(pcell, extra=(layout.dbu, None))

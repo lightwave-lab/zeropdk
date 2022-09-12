@@ -3,7 +3,7 @@
 import logging
 import math
 import numpy as np
-import pya
+import klayout.db as kdb
 from zeropdk.layout.geometry import bezier_optimal
 
 
@@ -56,9 +56,9 @@ def layout_ebeam_waveguide_from_points(
 
 
 def ensure_layer(layout, layer):
-    if isinstance(layer, pya.LayerInfo):
+    if isinstance(layer, kdb.LayerInfo):
         return layout.layer(layer)
-    elif isinstance(layer, type(1)):
+    elif isinstance(layer, int):
         return layer
     else:
         logger.error(f"{layer} not recognized")
@@ -73,8 +73,8 @@ def common_layout_manhattan_traces(
         layer1 and layer2 are given to layout.LayerInfo(layer), generally
             layer2 is on top
         via_cell_placer: returns a cell when called with
-            via_cell_placer(parent_cell, pya.DPoint origin, width, layer1, layer2, layervia, ex)
-        path: list of tuples containing necessary info ((x, y) or pya.DPoint, layer, width)
+            via_cell_placer(parent_cell, kdb.DPoint origin, width, layer1, layer2, layervia, ex)
+        path: list of tuples containing necessary info ((x, y) or kdb.DPoint, layer, width)
 
     Returns:
         path
@@ -83,7 +83,7 @@ def common_layout_manhattan_traces(
     have the last layer be different than the penultimate one.
     """
 
-    assert isinstance(ex, (pya.DPoint, pya.DVector))
+    assert isinstance(ex, (kdb.DPoint, kdb.DVector))
     ey = rotate90(ex)
 
     first_point, _, first_width = path[0]
@@ -100,9 +100,9 @@ def common_layout_manhattan_traces(
             x, y = point
             point = x * ex + y * ey
         else:
-            assert isinstance(point, (pya.DPoint, pya.DVector))
-            if isinstance(point, pya.DVector):
-                point = pya.DPoint(point)
+            assert isinstance(point, (kdb.DPoint, kdb.DVector))
+            if isinstance(point, kdb.DVector):
+                point = kdb.DPoint(point)
 
         points_list.append(point)  # store points
         widths_list.append(width)
@@ -176,7 +176,7 @@ def compute_paths_from_clusters(
         - middle_taper: Adds a middle point in the Z-shaped trace attempting to avoid collisions and DRC errors.
     provide a pitch for optical waveguides. electrical waveguides are figured
     out automatically.
-    path: list of tuples containing necessary info (pya.DPoint, layer, width)
+    path: list of tuples containing necessary info (kdb.DPoint, layer, width)
     """
 
     Z = 0
@@ -260,8 +260,8 @@ def bus_route_Z(cell, ports_from, ports_to, ex, pitch=WAVEGUIDE_RADIUS, radius=W
 def append_Z_trace_vertical(path, new_point, height, ex, middle_layer=None, middle_taper=False):
     """Adds new_point to the path list plus TWO Z or S manhattan interesections.
     Args:
-        path: list of tuples containing necessary info (pya.DPoint, layer, width)
-        new_point: tuple ((x, y) or pya.DPoint, layer, width)
+        path: list of tuples containing necessary info (kdb.DPoint, layer, width)
+        new_point: tuple ((x, y) or kdb.DPoint, layer, width)
         height: y-coordinate of where to place the inner point,
             from 0 to abs(new_point.y - path.y)
         ex: orientation of ports
@@ -402,8 +402,8 @@ def append_L_trace(path, new_point, middle_layer, ex):
     """Adds new_point to the path list plus ONE L manhattan intersection.
 
     Args:
-        path: list of tuples containing necessary info ((x, y) or pya.DPoint, layer, width)
-        new_point: tuple ((x, y) or pya.DPoint, layer, width)
+        path: list of tuples containing necessary info ((x, y) or kdb.DPoint, layer, width)
+        new_point: tuple ((x, y) or kdb.DPoint, layer, width)
     """
 
     assert len(path) > 0

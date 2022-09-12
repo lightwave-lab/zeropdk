@@ -7,6 +7,7 @@ from ..context import zeropdk  # noqa
 from zeropdk.exceptions import ZeroPDKWarning
 from zeropdk.pcell import PCell, PCellParameter, ParamContainer, TypeDouble, TypeInt
 from zeropdk.pcell import GDSCell
+from zeropdk.klayout_helper.cell import cell_insert_cell
 
 import klayout.db as kdb
 
@@ -71,13 +72,13 @@ def test_gdscell(top_cell):
         name="xyz"
     )
     TOP, layout = top_cell()
-    ex = kdb.DPoint(1, 0)
+    ex = kdb.DVector(1, 0)
     plogo, _ = princeton_logo.new_cell(layout)
-    size = (plogo.dbbox().p2 - plogo.dbbox().p1).norm()
+    size = (plogo.dbbox().p2 - plogo.dbbox().p1).length()
     for i in range(10):
         angle = 10 * i
         origin = ex * i * size
-        TOP.insert_cell(plogo, origin, angle)
+        cell_insert_cell(TOP, plogo, origin, angle)
 
     # The top cell will contain several instances of the same cell
     # Deleting cell named 'priceton_logo' will delete all instances:
@@ -117,15 +118,15 @@ def test_gdscellcache(top_cell):
         name="xyz"
     )
     TOP, layout = top_cell()
-    ex = kdb.DPoint(1, 0)
+    ex = kdb.DVector(1, 0)
 
     for i in range(10):
         # The new_cell method will create a new cell every time it is called.
         plogo, _ = princeton_logo.new_cell(layout)
-        size = (plogo.dbbox().p2 - plogo.dbbox().p1).norm()
+        size = (plogo.dbbox().p2 - plogo.dbbox().p1).length()
         angle = 10 * i
         origin = ex * i * size
-        TOP.insert_cell(plogo, origin, angle)
+        cell_insert_cell(TOP, plogo, origin, angle)
 
     # The top cell will contain several instances of different cells
     # 'plogo'. All 'plogos' will contain the same instance of the inner

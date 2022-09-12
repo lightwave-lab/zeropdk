@@ -10,7 +10,7 @@ from zeropdk.pcell import (
 )
 from zeropdk.layout import insert_shape
 from zeropdk.layout.polygons import rectangle
-
+from zeropdk.klayout_helper import as_vector, as_point
 from klayout.db import DPoint, DVector
 
 pad_width = PCellParameter(
@@ -62,7 +62,6 @@ layer_metal = PCellParameter(name="layer_metal", type=TypeLayer, description="Me
 
 layer_opening = PCellParameter(name="layer_opening", type=TypeLayer, description="Open Layer")
 
-
 class OrientedCell(PCell):
     """A standard cell that has the following parameters:
     - origin: Point
@@ -73,9 +72,9 @@ class OrientedCell(PCell):
     params = ParamContainer(origin, ex, ey)
 
     def origin_ex_ey(self):
-        origin = DPoint(self.params["origin"])
-        ex = DVector(self.params.ex)
-        ey = DVector(self.params.ey)
+        origin = as_point(self.params["origin"])  # type: ignore
+        ex = as_vector(self.params.ex)  # type: ignore
+        ey = as_vector(self.params.ey)  # type: ignore
         return origin, ex, ey
 
 
@@ -105,7 +104,7 @@ class DCPad(OrientedCell):
             make_shape_from_dpolygon(pad_square, 0, layout.dbu, cp.layer_metal)
             make_shape_from_dpolygon(pad_square, -2.5, layout.dbu, cp.layer_opening)
 
-        make_pad(origin + cp.pad_height * ey / 2, cp.pad_width, cp.pad_height, ex, ey)
+        make_pad(origin + (cp.pad_height * ey) / 2, cp.pad_width, cp.pad_height, ex, ey)
 
         port = Port("el0", origin + cp.port_width * ey / 2, -ey, cp.port_width, "el_dc")
 

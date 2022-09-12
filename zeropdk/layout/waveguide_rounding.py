@@ -1,43 +1,44 @@
 """ Straight waveguide rounding algorithms"""
 from functools import lru_cache
 from math import atan2, tan, inf
-from typing import List, Tuple
+from typing import List, Sequence, Tuple, Union
 import warnings
 import numpy as np
 import klayout.db as kdb
-from numpy.core.fromnumeric import trace
+from zeropdk.klayout_helper import as_point
+from zeropdk.layout import GeneralLayer
 from zeropdk.layout.geometry import rotate, fix_angle, cross_prod
 from zeropdk.layout.algorithms.sampling import sample_function
 from zeropdk.layout.polygons import layout_path
 from zeropdk.layout.waveguides import layout_waveguide
 from zeropdk.exceptions import ZeroPDKUserError, ZeroPDKWarning
 
-def angle_between(v1, v0):
+def angle_between(v1: kdb.DVector, v0: kdb.DVector) -> float:
     """Compute angle in radians between v1 and v0.
     Rotation angle from v0 to v1 counter-clockwise.
     """
     return fix_angle(atan2(v1.y, v1.x) - atan2(v0.y, v0.x))
 
 
-def project(P, A, B):
+def project(P:kdb.DPoint, A:kdb.DPoint, B:kdb.DPoint) -> kdb.DPoint:
     """Projects a point P into a line defined by A and B"""
     AB = B - A
-    eAB = AB / AB.norm()
+    eAB = AB / AB.length()
 
     Pproj = A + (P - A) * eAB * eAB
     return Pproj
 
 
-def bisect(V1, V2):
+def bisect(V1: kdb.DVector, V2: kdb.DVector) -> kdb.DVector:
     """Bisects two vectors V1 and V2. Returns a vector."""
 
     # from https://math.stackexchange.com/questions/2285965/how-to-find-the-vector-formula-for-the-bisector-of-given-two-vectors
 
-    V = V1.norm() * V2 + V2.norm() * V1
-    return V / V.norm()
+    V = V1.length() * V2 + V2.length() * V1
+    return V / V.length()
 
 
-def intersect(A, eA, B, eB):
+def intersect(A: kdb.DPoint, eA: kdb.DVector, B: kdb.DPoint, eB: kdb.DVector):
     """Computes intersection between lines defined by points A/B and vectors eA/eB"""
 
     # from http://mathforum.org/library/drmath/view/62814.html
@@ -81,11 +82,11 @@ class ClearanceForward(Exception):
 
 
 class _Arc:
-    def __init__(self, P1, C, P2, ccw):
+    def __init__(self, P1: kdb.DPoint, C: kdb.DPoint, P2: kdb.DPoint, ccw: bool):
         from math import isclose
 
         assert isclose(
-            (P2 - C).norm(), (P1 - C).norm(), abs_tol=1e-9
+            (P2 - C).length(), (P1 - C).length(), abs_tol=1e-9
         ), "Invalid Arc"  # inconsistent radius
         self.P1 = P1  # first point
         self.C = C  # center
@@ -97,7 +98,7 @@ class _Arc:
 
         P1, C, P2 = self.P1, self.C, self.P2
 
-        r = (P2 - C).norm()
+        r = (P2 - C).length()
 
         theta_start = atan2((P1 - C).y, (P1 - C).x)
         theta_end = atan2((P2 - C).y, (P2 - C).x)
@@ -124,7 +125,7 @@ class _Arc:
         )  # finish the waveguide a little bit after
 
         # create original waveguide poligon prior to clipping and rotation
-        dpoints_list = [C + kdb.DPoint(x, y) for x, y in zip(*coords)]
+        dpoints_list = [C + kdb.DVector(x, y) for x, y in zip(*coords)]  # type: ignore
         if not self.ccw:
             dpoints_list = list(reversed(dpoints_list))
         return dpoints_list
@@ -142,13 +143,15 @@ class _Line:
         return [self.P1, self.P2]
 
     def get_length(self):
-        return (self.P2 - self.P1).norm()
+        return (self.P2 - self.P1).abs()
 
     def __repr__(self):
         return "Line({P1}, {P2})".format(P1=self.P1, P2=self.P2)
 
+RoundedPathSolution = List[Union[_Line, _Arc]]
+RoundedPathPartialSolution = Tuple[RoundedPathSolution, List[kdb.DPoint]]
 
-def solve_Z(A, B, C, D, radius):
+def solve_Z(A: kdb.DPoint, B: kdb.DPoint, C: kdb.DPoint, D: kdb.DPoint, radius: float) -> RoundedPathPartialSolution:
     from math import sin, pi, copysign
 
     AB = B - A
@@ -161,12 +164,12 @@ def solve_Z(A, B, C, D, radius):
     # print("AB, BC, CD=", AB, BC, CD)
     # print("α1, α2=", degrees(α1), degrees(α2))
 
-    γ = _solve_Z_angle(α1, α2, BC.norm(), radius)
+    γ = _solve_Z_angle(α1, α2, BC.abs(), radius)
     # print("γ=", degrees(γ))
-    eX1X2 = rotate(-BC, -γ) / BC.norm()
+    eX1X2 = rotate(-BC, -γ) / BC.abs()
     # print("eX1X2=", eX1X2)
 
-    x = radius / BC.norm() * (1 - sin(abs(α1 - γ))) / sin(abs(α1))
+    x = radius / BC.abs() * (1 - sin(abs(α1 - γ))) / sin(abs(α1))
     # print("x=", x)
     X = B + x * BC
     # print("X=", X)
@@ -193,7 +196,7 @@ def solve_Z(A, B, C, D, radius):
     )
 
 
-def solve_U(A, B, C, D, radius):
+def solve_U(A: kdb.DPoint, B: kdb.DPoint, C: kdb.DPoint, D: kdb.DPoint, radius: float) -> RoundedPathPartialSolution:
     # TODO: known bug. This assumes that there is enough space between
     # A and B / C and D to perform the turn. Suggestion: if there isn't,
     # abort or move Eprime and Gprime accordingly.
@@ -208,7 +211,7 @@ def solve_U(A, B, C, D, radius):
 
     Fprime = project(X, B, C)
 
-    h = (Fprime - X).norm()
+    h = (Fprime - X).abs()
 
     # if h is too close to R, we will have extra unnecessary arcs
     # use two solve_3 with h as a radius instead
@@ -223,9 +226,9 @@ def solve_U(A, B, C, D, radius):
     # Cprime = X + XC * radius / h
 
     eAB = B - A
-    eAB /= eAB.norm()
+    eAB /= eAB.abs()
     eDC = C - D
-    eDC /= eDC.norm()
+    eDC /= eDC.abs()
 
     Eprime = project(X, A, B)
     Gprime = project(X, D, C)
@@ -236,7 +239,7 @@ def solve_U(A, B, C, D, radius):
     def compute_A_prime(E, Eprime, eAB):
         from math import sqrt
 
-        D = (E - Eprime).norm()
+        D = (E - Eprime).abs()
         L = sqrt(D * (4 * radius - D))
         Aprime = Eprime - eAB * L
         return Aprime
@@ -247,8 +250,8 @@ def solve_U(A, B, C, D, radius):
     Asec = Aprime + (E - X)
     Dsec = Dprime + (G - X)
 
-    H = 0.5 * (Asec + X)
-    II = 0.5 * (Dsec + X)
+    H = X + 0.5 * (Asec - X)
+    II = X + 0.5 * (Dsec - X)
 
     return (
         [
@@ -261,11 +264,11 @@ def solve_U(A, B, C, D, radius):
     )
 
 
-def solve_2(A, B):
+def solve_2(A: kdb.DPoint, B: kdb.DPoint) -> RoundedPathPartialSolution:
     return [_Line(A, B)], []
 
 
-def solve_V(A, B, C, radius):
+def solve_V(A: kdb.DPoint, B: kdb.DPoint, C: kdb.DPoint):
     XB = bisect(A - B, C - B)
 
     isCCW = cross_prod(C - B, A - B) > 0
@@ -273,8 +276,8 @@ def solve_V(A, B, C, radius):
     Aprime = project(A, B, XB + B)
     Cprime = project(C, B, XB + B)
 
-    rA = (A - Aprime).norm()
-    rC = (C - Cprime).norm()
+    rA = (A - Aprime).abs()
+    rC = (C - Cprime).abs()
 
     if rA > rC:
         Csec = project(Cprime, A, B)
@@ -283,8 +286,7 @@ def solve_V(A, B, C, radius):
         Asec = project(Aprime, B, C)
         return [_Arc(A, Aprime, Asec, isCCW)], [Asec, C]
 
-
-def solve_3(A, B, C, radius):
+def solve_3(A: kdb.DPoint, B: kdb.DPoint, C: kdb.DPoint, radius: float) -> RoundedPathPartialSolution:
     from math import cos, pi
 
     p0, p1, p2 = A, B, C
@@ -301,8 +303,8 @@ def solve_3(A, B, C, radius):
     # I am adding this 0.001 fix to correct that.
     clear = _min_clearance(α, radius - 0.001)
 
-    len1 = (p1 - p0).norm()
-    len2 = (p2 - p1).norm()
+    len1 = (p1 - p0).abs()
+    len2 = (p2 - p1).abs()
 
     if len1 < clear:
         raise ClearanceRewind()
@@ -322,7 +324,7 @@ def solve_3(A, B, C, radius):
     )
 
 
-def solve_4(A, B, C, D, radius):
+def solve_4(A: kdb.DPoint, B: kdb.DPoint, C: kdb.DPoint, D: kdb.DPoint, radius: float) -> RoundedPathPartialSolution:
     AB = B - A
     BC = C - B
     CD = D - C
@@ -353,7 +355,7 @@ def zeropdk_warn(message, *, traceback=False):
         warnings.formatwarning = _oldformatwarning
 
 
-def compute_rounded_path(points, radius):
+def compute_rounded_path(points: Sequence[kdb.DPoint], radius: float) -> RoundedPathSolution:
     """Transforms a list of points into sections of arcs and straight lines.
     Approach:
         - Go through the list of points in triplets (A, B, C).
@@ -374,14 +376,18 @@ def compute_rounded_path(points, radius):
 
     # Sanity checks
     assert N >= 3, "Insufficient number of points, N = {N} < 3".format(N=N)
+    old_rounded_path: RoundedPathSolution
+    rounded_path: RoundedPathSolution
     old_rounded_path = rounded_path = list()
     old_points_left = points_left = list(points)
 
     # condition to check if the last solve_3 was successful (can undo if necessary)
     can_rewind = False
     while len(points_left) > 2:
+        solution: RoundedPathSolution = []
         try:
-            solution, rest_points = solve_3(*points_left[0:3], radius)
+            A, B, C = points_left[0:3]
+            solution, rest_points = solve_3(A, B, C, radius)
             old_points_left = points_left[:]
             points_left = rest_points + points_left[3:]
             can_rewind = True
@@ -391,7 +397,8 @@ def compute_rounded_path(points, radius):
             if len(points_left[0:4]) >= 4:
                 forward_possible = True
                 try:
-                    solution, rest_points = solve_4(*points_left[0:4], radius)
+                    A, B, C, D = points_left[0:4]
+                    solution, rest_points = solve_4(A, B, C, D, radius)
                     old_points_left = points_left[:]
                     points_left = rest_points + points_left[4:]
                     can_rewind = False
@@ -410,7 +417,8 @@ def compute_rounded_path(points, radius):
                     raise RuntimeError(
                         "Not enough space to complete arcs in rounded waveguide: Cannot solve:", *points_left[0:4]
                     )
-                solution, rest_points = solve_4(*points_left[0:4], radius)
+                A, B, C, D = points_left[0:4]
+                solution, rest_points = solve_4(A, B, C, D, radius)
                 old_points_left = points_left[:]
                 points_left = rest_points + points_left[4:]
                 can_rewind = False
@@ -419,7 +427,8 @@ def compute_rounded_path(points, radius):
                 raise RuntimeError(
                     "Not enough space to complete arcs in rounded waveguide: Cannot solve:", *points_left[0:4]
                 )
-            solution, rest_points = solve_4(*points_left[0:4], radius)
+            A, B, C, D = points_left[0:4]
+            solution, rest_points = solve_4(A, B, C, D, radius)
             old_points_left = points_left[:]
             points_left = rest_points + points_left[4:]
             can_rewind = False
@@ -482,7 +491,7 @@ def _compute_tapered_line(line, waveguide_width, taper_width, taper_length):
         return [_Path([P1, P2], waveguide_width)]
 
     u = P2 - P1
-    u /= u.norm()
+    u /= u.abs()
 
     return [
         _Taper(P1, P1 + u * taper_length, waveguide_width, taper_width),
@@ -508,15 +517,15 @@ def compute_tapered_path(path, waveguide_width, taper_width, taper_length):
     return tapered_path
 
 
-def unique_points(point_list):
+def unique_points(point_list: Sequence[kdb.DPoint]) -> List[kdb.DPoint]:
     """ Takes a list of DPoints and removes any duplicates."""
     if len(point_list) < 2:
-        return point_list
+        return list(point_list)
 
     unique_points = [point_list[0]]
     previous_point = point_list[0]
     for point in point_list[1:]:
-        if (point - previous_point).norm() > 1e-4:
+        if (point - previous_point).length() > 1e-4:
             unique_points.append(point)
             previous_point = point
 
@@ -585,7 +594,7 @@ def waveguide_from_points(
     return _draw_points2, _draw_widths2
 
 def layout_waveguide_from_points(
-    cell, layer, points, width, radius, taper_width=None, taper_length=None
+    cell: kdb.Cell, layer: GeneralLayer, points: Sequence[kdb.DPoint], width: Union[float, Sequence[float]], radius, taper_width=None, taper_length=None
 ):
 
     points, widths = waveguide_from_points(
@@ -618,19 +627,19 @@ def main():
     layer = kdb.LayerInfo(10, 0)
     layerRec = kdb.LayerInfo(1001, 0)
 
-    ex, ey = kdb.DPoint(1, 0), kdb.DPoint(0, 1)
+    ex, ey = kdb.DVector(1, 0), kdb.DVector(0, 1)
 
     # Begin tests
 
     points = [0 * ex, 10 * ex, 10 * (ex + ey), 30 * ex]
-    origin = 0 * ey
+    origin = as_point(0 * ey)
     points = [origin + point for point in points]
     x = compute_rounded_path(points, 3)
     trace_rounded_path(TOP, layer, x, 0.5)
     trace_reference_path(TOP, layerRec, points, 0.5)
 
     points = [0 * ex, 10 * ex, 5 * (ex - ey), 17 * ex, 30 * ex]
-    origin = 30 * ey
+    origin = as_point(30 * ey)
     points = [origin + point for point in points]
     x = compute_rounded_path(points, 3)
     trace_rounded_path(TOP, layer, x, 0.5)
@@ -648,7 +657,7 @@ def main():
                 (d + 2 * radius) * ey,
             ]
             points += [origin + displacement for displacement in displacements]
-        origin = 15 * ex + 40 * ey
+        origin = as_point(15 * ex + 40 * ey)
         points = [origin + point for point in points]
         x = compute_rounded_path(points, radius)
         trace_rounded_path(TOP, layer, x, 0.5)
@@ -665,18 +674,18 @@ def main():
     ]
 
     # Untapered
-    origin = 40 * ex
+    origin = as_point(40 * ex)
     points_ = [origin + point for point in points]
     layout_waveguide_from_points(TOP, layer, points_, 0.5, 5)
 
     # Tapered
-    origin = 40 * ex + 40 * ey
+    origin = as_point(40 * ex + 40 * ey)
     points_ = [origin + point for point in points]
     layout_waveguide_from_points(TOP, layer, points_, 0.5, 5, taper_width=3, taper_length=10)
 
 
     # Stress test about ClearanceRewind when forward would work.
-    origin = 40 * ex + 80 * ey
+    origin = as_point(40 * ex + 80 * ey)
     points = [
         0 * ex,
         222 * ey,
@@ -688,7 +697,7 @@ def main():
 
     # Stress test on trying forward first after ClearanceRewind.
 
-    origin = 60 * ex + 80 * ey
+    origin = as_point(60 * ex + 80 * ey)
     points = [
         0 * ex,
         222 * ey,
@@ -699,7 +708,7 @@ def main():
     # breakpoint()
     layout_waveguide_from_points(TOP, layer, points_, 5, 230)
 
-    origin = 80 * ex + 80 * ey
+    origin = as_point(80 * ex + 80 * ey)
     points = [
         0 * ex,
         100 * ey,

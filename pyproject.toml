@@ -1,3 +1,9 @@
 [tool.black]
 line-length = 100
 target-version = ['py37']
+
+[tool.pyright]
+include = ["zeropdk", "tests"]
+pythonVersion = "3.7"
+useLibraryCodeForTypes = true
+typeCheckingMode = "basic"

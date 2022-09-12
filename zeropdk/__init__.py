@@ -1,7 +1,6 @@
 import os
 import logging
 from zeropdk.tech import Tech  # noqa
-from zeropdk import klayout_extend  # noqa
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
