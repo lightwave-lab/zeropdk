@@ -10,6 +10,7 @@ try:
     import numpy as np
     import numpy.typing as npt
 except ImportError:
+
     def sample_function(
         func: Callable, points, tol=0.001, min_points=8, max_level=16, sample_transform=None
     ):
@@ -77,7 +78,7 @@ else:
         >>> plt.show()
 
         """
-        with np.errstate(divide="ignore", invalid="ignore"): # type: ignore
+        with np.errstate(divide="ignore", invalid="ignore"):  # type: ignore
             return _sample_function(
                 func,
                 points,

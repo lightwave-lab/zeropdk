@@ -28,7 +28,9 @@ TypePoint = kdb.DPoint
 TypeVector = kdb.DVector
 TypeLayer = kdb.LayerInfo
 
-ParamTypes = Union[TypeDouble, TypeInt, TypeBoolean, TypeString, TypeList, kdb.DPoint, kdb.DVector, kdb.LayerInfo]
+ParamTypes = Union[
+    TypeDouble, TypeInt, TypeBoolean, TypeString, TypeList, kdb.DPoint, kdb.DVector, kdb.LayerInfo
+]
 
 # I like using 'type' as argument names, but that conflicts with
 # python's keyword type
@@ -55,8 +57,8 @@ class PCellParameter:
         name,
         type: Optional[Type[ParamTypes]] = None,
         description="No description",
-        default: Optional[ParamTypes]=None,
-        unit: Optional[str] =None,
+        default: Optional[ParamTypes] = None,
+        unit: Optional[str] = None,
         readonly=False,
         choices: Optional[List[Tuple[str, Any]]] = None,
     ):
@@ -100,7 +102,11 @@ class PCellParameter:
         try:
             if isinstance(value, self.type):
                 return value
-            elif self.type in (kdb.DPoint, kdb.DVector, kdb.LayerInfo):  # klayout throws RuntimeError instead of TypeError
+            elif self.type in (
+                kdb.DPoint,
+                kdb.DVector,
+                kdb.LayerInfo,
+            ):  # klayout throws RuntimeError instead of TypeError
                 try:
                     return self.type(value)  # type: ignore
                 except RuntimeError as e:
@@ -185,7 +191,7 @@ class ParamContainer(Mapping):
     _container: Dict[str, PCellParameter]
     _current_values: Dict[str, Optional[ParamTypes]]
 
-    def __init__(self, *args: Union[PCellParameter, 'ParamContainer']):
+    def __init__(self, *args: Union[PCellParameter, "ParamContainer"]):
         """Two ways of initializing:
         1. ParamContainer(pc_obj), where pc_obj is another param_container
         2. ParamContainer(param1, param2, param3, ...), where param is of type
@@ -261,7 +267,7 @@ class ParamContainer(Mapping):
 class Port(object):
     """Defines a port object"""
 
-    def __init__(self, name, position, direction, width, port_type: Optional[str]=None):
+    def __init__(self, name, position, direction, width, port_type: Optional[str] = None):
         self.name: str = name
         self.position: kdb.DPoint = position  # Point
         self.direction: kdb.DVector = direction  # Vector
@@ -293,7 +299,7 @@ class Port(object):
         return self
 
     def draw(self, cell: kdb.Cell, layer: kdb.LayerInfo):
-        """ Draws this port on cell's layer using klayout.db"""
+        """Draws this port on cell's layer using klayout.db"""
         if self.name.startswith("el"):
             pin_length = self.width
         else:
@@ -328,13 +334,15 @@ class Port(object):
         # cell.shapes(layer).insert(pin_rectangle)
 
         # Place a text object annotating the name of the port
-        insert_shape(cell, layer,
+        insert_shape(
+            cell,
+            layer,
             kdb.DText(
                 self.name,
                 kdb.DTrans(kdb.DTrans.R0, self.position.x, self.position.y),
                 min(pin_length, 2),
                 0,
-            )
+            ),
         )
 
         return self
@@ -492,7 +500,9 @@ class PCell:
         )
 
 
-_zeropdk_cache_store: Dict[Tuple[str, str, str], Dict[Tuple[str, str, kdb.Layout], kdb.Cell]] = defaultdict(dict)
+_zeropdk_cache_store: Dict[
+    Tuple[str, str, str], Dict[Tuple[str, str, kdb.Layout], kdb.Cell]
+] = defaultdict(dict)
 
 
 def GDSCell(cell_name: str, filename: str, gds_dir: str) -> Type[PCell]:
@@ -509,7 +519,10 @@ def GDSCell(cell_name: str, filename: str, gds_dir: str) -> Type[PCell]:
     assert gds_dir is not None
     filepath = os.path.join(gds_dir, filename)
     if not os.path.exists(filepath):
-        warnings.warn(f"Warning while creating GDSCell for cell name '{cell_name}': '{filename}' not found in '{gds_dir}'", category=ZeroPDKWarning)
+        warnings.warn(
+            f"Warning while creating GDSCell for cell name '{cell_name}': '{filename}' not found in '{gds_dir}'",
+            category=ZeroPDKWarning,
+        )
 
     class GDS_cell_base(PCell):
         """Imports a gds file and places it."""
@@ -568,10 +581,8 @@ def GDSCell(cell_name: str, filename: str, gds_dir: str) -> Type[PCell]:
     return GDS_cell_base
 
 
-def port_to_pin_helper(
-    ports_list: List[Port], cell: kdb.Cell, layerPinRec: kdb.LayerInfo
-):
-    """ Draws port shapes for visual help in KLayout. """
+def port_to_pin_helper(ports_list: List[Port], cell: kdb.Cell, layerPinRec: kdb.LayerInfo):
+    """Draws port shapes for visual help in KLayout."""
 
     for port in ports_list:
         port.draw(cell, layerPinRec)

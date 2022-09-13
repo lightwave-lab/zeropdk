@@ -31,9 +31,7 @@ def main():
     for i, angle_0 in enumerate(angles):
         for j, angle_3 in enumerate(angles):
             print("Bezier({:>2d}, {:>2d})".format(i, j))
-            curve = bezier_curve(
-                origin + ey * i * 150 + ex * j * 150, angle_0, angle_3, ex, ey
-            )
+            curve = bezier_curve(origin + ey * i * 150 + ex * j * 150, angle_0, angle_3, ex, ey)
             layout_waveguide(TOP, layer, curve, width=0.5)
 
     layout.write("bezier_waveguides.gds")

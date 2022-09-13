@@ -4,6 +4,7 @@ from ..context import zeropdk  # noqa
 import klayout.db as kdb
 from zeropdk.layout.cache import CACHE_PROP_ID
 
+
 def test_metadata():
     """
     KLayout can save some properties into the cell instance. But GDS does not serialize this into file.
@@ -32,6 +33,7 @@ def test_metadata():
     assert TOP.property(123) == "test2"
     # for some reason this fails too, but it shouldn't.
     # assert TOP.property("key") == "test1"
+
 
 def test_cache_metadata():
     save_options = kdb.SaveLayoutOptions()

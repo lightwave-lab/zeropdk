@@ -10,7 +10,9 @@ import klayout.db as kdb
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T', kdb.DVector, kdb.DPoint)
+T = TypeVar("T", kdb.DVector, kdb.DPoint)
+
+
 def rotate(point: T, angle_rad: float) -> T:
     """Rotates point counter-clockwisely about its origin by an angle given in radians"""
     th = angle_rad
@@ -19,16 +21,20 @@ def rotate(point: T, angle_rad: float) -> T:
     new_y = y * np.cos(th) + x * np.sin(th)
     return point.__class__(new_x, new_y)
 
+
 def rotate_deg(point: T, angle_deg: float) -> T:
     """Rotates point counter-clockwisely about its origin by an angle given in degrees"""
     angle_rad = angle_deg / 180 * np.pi
     return rotate(point, angle_rad)
 
+
 def rotate90(point: T) -> T:
     return rotate(point, np.pi / 2)
 
+
 def cross_prod(p1: PointLike, p2: PointLike) -> float:
     return p1.x * p2.y - p1.y * p2.x
+
 
 def find_arc(A: kdb.DPoint, B: kdb.DPoint, C: kdb.DPoint) -> Tuple[Optional[kdb.DPoint], float]:
     """Finds the arc of a circle containing points A, B, C.
@@ -448,6 +454,7 @@ def memoized_bezier_optimal(angle0: float, angle3: float, file: str) -> Tuple[fl
         logger.error(f"Optimal Bezier interpolation has failed for angles({angle0}, {angle3}).")
         return _original_bezier_optimal(angle0, angle3)
 
+
 _bezier_optimal: Callable[[float, float], Tuple[float, float]]
 
 if os.path.isfile(bezier_optimal_fpath):
@@ -476,7 +483,7 @@ def bezier_optimal(P0, P3, angle0: float, angle3: float):
         P1 = a * scaling * _Point(np.cos(angle0), np.sin(angle0)) + P0
         P2 = P3 - b * scaling * _Point(np.cos(angle3), np.sin(angle3))
         curve_func = bezier_line(P0, P1, P2, P3)
-        with np.errstate(divide="ignore"): # type: ignore
+        with np.errstate(divide="ignore"):  # type: ignore
             # warn if minimum radius is smaller than 3um
             min_radius = np.true_divide(1, max_curvature(P0, P1, P2, P3))
             if min_radius < 3:

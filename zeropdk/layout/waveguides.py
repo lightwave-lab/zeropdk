@@ -24,9 +24,11 @@ import klayout.db as kdb
 
 debug = False
 
-T = TypeVar('T')
+T = TypeVar("T")
+
+
 def _remove_duplicates(point_tuple_list: List[Tuple[kdb.DPoint, T]]) -> List[Tuple[kdb.DPoint, T]]:
-    """ Iterates through point_tuple_list and deletes entries with consecutive duplicate points."""
+    """Iterates through point_tuple_list and deletes entries with consecutive duplicate points."""
 
     assert isinstance(point_tuple_list[0][0], kdb.DPoint), "Expected list of points."
 
@@ -42,7 +44,10 @@ def _remove_duplicates(point_tuple_list: List[Tuple[kdb.DPoint, T]]) -> List[Tup
 
     return unique_points
 
-def waveguide_dpolygon(points_list: Sequence[kdb.DPoint], width: Union[float, Sequence[float]], dbu: float, smooth=True) -> ZeroPDKDSimplePolygon:
+
+def waveguide_dpolygon(
+    points_list: Sequence[kdb.DPoint], width: Union[float, Sequence[float]], dbu: float, smooth=True
+) -> ZeroPDKDSimplePolygon:
     """Returns a polygon outlining a waveguide.
 
     This was updated over many iterations of failure. It can be used for both
@@ -289,7 +294,13 @@ def waveguide_dpolygon(points_list: Sequence[kdb.DPoint], width: Union[float, Se
     return ZeroPDKDSimplePolygon(polygon_dpoints)
 
 
-def layout_waveguide(cell: kdb.Cell, layer: GeneralLayer, points_list: Sequence[kdb.DPoint], width: Union[float, Sequence[float]], smooth=False):
+def layout_waveguide(
+    cell: kdb.Cell,
+    layer: GeneralLayer,
+    points_list: Sequence[kdb.DPoint],
+    width: Union[float, Sequence[float]],
+    smooth=False,
+):
     """Lays out a waveguide (or trace) with a certain width along given points.
 
     This is very useful for laying out Bezier curves with or without adiabatic tapers.

@@ -3,6 +3,7 @@ from typing import Union
 import klayout.db as kdb
 from zeropdk.types import GeneralLayer
 
+
 def insert_shape(cell: kdb.Cell, layer: GeneralLayer, shape):
     if layer is None:
         return
@@ -10,7 +11,8 @@ def insert_shape(cell: kdb.Cell, layer: GeneralLayer, shape):
         layer_index = cell.layout().layer(layer)
     elif isinstance(layer, Number):
         layer_index = layer
-    cell.shapes(layer_index).insert(shape) # type: ignore
+    cell.shapes(layer_index).insert(shape)  # type: ignore
+
 
 def layout_pgtext(cell: kdb.Cell, layer, x, y, text, mag, inv=False, angle=0):
     layout = kdb.Layout()

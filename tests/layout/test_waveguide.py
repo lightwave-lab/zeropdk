@@ -31,7 +31,7 @@ def test_waveguide(top_cell: Callable[[], Tuple[kdb.Cell, kdb.Layout]]):
     ey = kdb.DVector(0, 1)
     origin = kdb.DPoint(0, 0)
     # list of points depicting a parabola
-    points_list: npt.NDArray[np.object_] = origin + 100 * t * ex + 100 * t ** 2 * ey  # type: ignore
+    points_list: npt.NDArray[np.object_] = origin + 100 * t * ex + 100 * t**2 * ey  # type: ignore
     dbu = 0.001
     width = 1
     assert isinstance(points_list, np.ndarray)
@@ -118,7 +118,6 @@ def test_waveguide_rounding(top_cell: Callable[[], Tuple[kdb.Cell, kdb.Layout]])
     origin = as_point(40 * ex + 40 * ey)
     points_ = [origin + vector for vector in vectors]
     layout_waveguide_from_points(TOP, layer, points_, 0.5, 5, taper_width=3, taper_length=10)
-
 
     # Stress test about ClearanceRewind when forward would work.
     origin = as_point(40 * ex + 80 * ey)

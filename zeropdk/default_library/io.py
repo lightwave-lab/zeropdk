@@ -62,6 +62,7 @@ layer_metal = PCellParameter(name="layer_metal", type=TypeLayer, description="Me
 
 layer_opening = PCellParameter(name="layer_opening", type=TypeLayer, description="Open Layer")
 
+
 class OrientedCell(PCell):
     """A standard cell that has the following parameters:
     - origin: Point

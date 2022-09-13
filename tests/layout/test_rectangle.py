@@ -23,7 +23,7 @@ def test_square():
     assert (p2 - p1).sq_length() == (p4 - p1).sq_length()
 
     # area computes normally
-    assert sq.area() == pytest.approx(size ** 2)
+    assert sq.area() == pytest.approx(size**2)
 
     # origin is inside square
     assert sq.inside(origin)

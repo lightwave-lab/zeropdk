@@ -6,6 +6,7 @@ from ..context import zeropdk  # noqa
 from zeropdk.layout.polygons import rectangle, square
 import klayout.db as kdb
 
+
 def test_simple_polygon_resize():
     a, b = 10, 20
     ex = kdb.DVector(1, 0)

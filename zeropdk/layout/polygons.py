@@ -9,6 +9,7 @@ import numpy as np
 
 from zeropdk.types import GeneralLayer
 
+
 def box(point1, point3, ex, ey):
     """Returns a polygon of a box defined by point1, point3 and orientation ex.
     p2 ----- p3
@@ -38,7 +39,7 @@ def layout_box(cell, layer, point1, point3, ex):
     return polygon
 
 
-def rectangle(center: kdb.DPoint, width: float, height: float, ex:kdb.DVector, ey:kdb.DVector):
+def rectangle(center: kdb.DPoint, width: float, height: float, ex: kdb.DVector, ey: kdb.DVector):
     """
     returns the polygon of a rectangle centered at center,
     aligned with ex, with width and height in microns
@@ -112,15 +113,20 @@ def layout_rectangle(cell, layer, center, width, height, ex):
 
 # TODO: Reorganize later
 
+
 def layout_path(cell, layer: kdb.LayerInfo, point_iterator: Iterable[kdb.DPoint], w: float):
-    """ Simple wrapper for kdb.DPath."""
+    """Simple wrapper for kdb.DPath."""
     path = kdb.DPath(list(point_iterator), w, 0, 0).to_itype(cell.layout().dbu)
     insert_shape(cell, layer, kdb.DPath(path))
 
-def layout_path_with_ends(cell, layer: kdb.LayerInfo, point_iterator: Iterable[kdb.DPoint], w: float):
-    """ Simple wrapper for kdb.DPath."""
+
+def layout_path_with_ends(
+    cell, layer: kdb.LayerInfo, point_iterator: Iterable[kdb.DPoint], w: float
+):
+    """Simple wrapper for kdb.DPath."""
     dpath = kdb.DPath(list(point_iterator), w, w / 2, w / 2)
     insert_shape(cell, layer, dpath)
+
 
 def append_relative(points: List[kdb.DPoint], *relative_vectors: kdb.DVector):
     """Appends to list of points in relative steps:
@@ -136,6 +142,7 @@ def append_relative(points: List[kdb.DPoint], *relative_vectors: kdb.DVector):
         return points
     except TypeError:
         raise TypeError("First argument must be a list of points")
+
 
 from zeropdk.layout.algorithms import sample_function
 

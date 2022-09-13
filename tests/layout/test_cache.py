@@ -16,15 +16,15 @@ cache_cell = partial(
     cache_dir=CACHE_DIR,
 )
 
+
 def define_param(name, type, description, default=None, **kwargs):
     from zeropdk.pcell import PCellParameter
 
-    return PCellParameter(
-        name=name, type=type, description=description, default=default, **kwargs
-    )
+    return PCellParameter(name=name, type=type, description=description, default=default, **kwargs)
+
 
 @cache_cell
-class EmptyPCell(PCell): # type: ignore
+class EmptyPCell(PCell):  # type: ignore
     params = ParamContainer(
         define_param("angle_ex", TypeDouble, "x-axis angle (deg)", default=0),
     )
@@ -42,7 +42,6 @@ class EmptyPCell(PCell): # type: ignore
         ey = rotate90(ex)
         return origin, ex, ey
 
-
     def draw(self, cell):
         layout = cell.layout()
 
@@ -55,9 +54,11 @@ class EmptyPCell(PCell): # type: ignore
 
         return cell, {port.name: port for port in ports}
 
+
 @pytest.fixture
 def top_cell():
     rmtree(CACHE_DIR, ignore_errors=True)
+
     def _top_cell():
         layout = kdb.Layout()
         layout.dbu = 0.001
@@ -65,6 +66,7 @@ def top_cell():
         return TOP, layout
 
     return _top_cell
+
 
 def test_new_pcell(top_cell):
     TOP, layout = top_cell()

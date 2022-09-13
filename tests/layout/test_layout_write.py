@@ -29,5 +29,8 @@ def test_rectangle_write(top_cell: Callable[[], Tuple[kdb.Cell, kdb.Layout]]):
     r = rectangle(center, width, height, ex, ey)
     assert str(r) == "(-10,-15;-10,-5;10,15;10,5)"
     insert_shape(TOP, layer, r)
-    assert str(list(TOP.shapes(0).each())[0]) == "simple_polygon (-10000,-15000;-10000,-5000;10000,15000;10000,5000)"
+    assert (
+        str(list(TOP.shapes(0).each())[0])
+        == "simple_polygon (-10000,-15000;-10000,-5000;10000,15000;10000,5000)"
+    )
     TOP.write("tests/tmp/test_rectangle.gds")

@@ -8,6 +8,7 @@ from zeropdk.layout.geometry import rotate90, rotate
 from zeropdk.types import GeneralLayer
 from zeropdk.klayout_helper import as_vector
 
+
 class ZeroPDKDSimplePolygon(kdb.DSimplePolygon):
     """SimplePolygon with some added functionalities:
     - transform_and_rotate
@@ -220,7 +221,7 @@ class ZeroPDKDSimplePolygon(kdb.DSimplePolygon):
         self.assign(dpoly)
         return self
 
-    def moved(self, dx_or_dpoint: Union[kdb.DVector, float], dy: Optional[float]=None):
+    def moved(self, dx_or_dpoint: Union[kdb.DVector, float], dy: Optional[float] = None):
         """Returns a new DSimplePolygon with its coordinates moved by given offset.
         The offset can be given by using either signature:
         - moved(v: DVector)
@@ -232,7 +233,9 @@ class ZeroPDKDSimplePolygon(kdb.DSimplePolygon):
         elif dy is not None:
             pya_dpoly = super().moved(dx_or_dpoint, dy)
         else:
-            raise TypeError("Wrong function arguments. Expected either moved(v:DVector) or moved (dx:float, dy:float)")
+            raise TypeError(
+                "Wrong function arguments. Expected either moved(v:DVector) or moved (dx:float, dy:float)"
+            )
         zeropdk_dpoly = self.__class__()
         zeropdk_dpoly.assign(pya_dpoly)
         return zeropdk_dpoly

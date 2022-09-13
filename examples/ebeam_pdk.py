@@ -20,8 +20,7 @@ EBeam = Tech.load_from_xml(lyp_path)
 
 
 def draw_ports(cell, ports):
-    """ Draws ports in the Pin Recognition layer (SiEPIC)
-    """
+    """Draws ports in the Pin Recognition layer (SiEPIC)"""
 
     if isinstance(ports, abc.Mapping):  # dictionary
         for port in ports.values():

@@ -13,6 +13,7 @@ from klayout.db import Point, DPoint, DVector, Vector
 
 try:
     import numpy as np
+
     MODULE_NUMPY = True
 except ImportError:
     MODULE_NUMPY = False
@@ -79,11 +80,14 @@ def pyaPoint__init__(self, *args):
 def pyaPoint__getstate__(self):
     return (self.x, self.y)
 
+
 def pyaPoint__setstate__(self, state):
     self.x, self.y = state
 
+
 def pyaPoint__repr__(self):
     return f"{self.__class__.__name__}({self.x}, {self.y})"
+
 
 @contextmanager
 def make_points_picklable():
@@ -97,6 +101,7 @@ def make_points_picklable():
     for klass in KLayoutPoints:
         klass.__getstate__ = old_methods[(klass, "__getstate__")]
         klass.__setstate__ = old_methods[(klass, "__setstate__")]
+
 
 def patch_points():
     make_points_picklable()

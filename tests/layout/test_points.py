@@ -59,6 +59,7 @@ def test_numpy():
     assert isinstance(point_array, np.ndarray)
     assert np.all([0 * ex, 1 * ex, 2 * ex] == point_array)
 
+
 def test_float_operations():
     assert kdb.DPoint(1, 2) / 1.0 == kdb.DPoint(1, 2)
     assert 0.5 * kdb.DPoint(1, 2) == kdb.DPoint(0.5, 1)

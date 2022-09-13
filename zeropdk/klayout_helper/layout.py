@@ -18,12 +18,15 @@ def layout_read_cell(layout: Layout, cell_name: str, filepath: str) -> Cell:
     layout2.read(filepath)
     gdscell2 = layout2.cell(cell_name)
     if gdscell2 is None:
-        raise RuntimeError(f"The file '{filepath}' does not contain a cell named '{cell_name}'. This name is case sensitive.")
+        raise RuntimeError(
+            f"The file '{filepath}' does not contain a cell named '{cell_name}'. This name is case sensitive."
+        )
     gdscell = layout.create_cell(cell_name)
     gdscell.copy_tree(gdscell2)
     del gdscell2
     del layout2
     return gdscell
+
 
 def patch_layout():
     Layout.read_cell = layout_read_cell
