@@ -27,6 +27,7 @@ SOFTWARE.
 
 from subprocess import check_output, CalledProcessError
 from functools import lru_cache
+import os
 import os.path
 
 

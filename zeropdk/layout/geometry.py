@@ -1,8 +1,9 @@
 import logging
 import os
 from functools import lru_cache, partial
-from typing import Callable, Generic, Optional, Tuple, TypeVar, Union
+from typing import Callable, List, Optional, Sequence, Tuple, TypeVar, Union
 import numpy as np
+from numpy.typing import NDArray
 from scipy.interpolate import interp2d
 from zeropdk.layout.algorithms.sampling import sample_function
 from zeropdk.types import PointLike
@@ -92,7 +93,9 @@ def project(v, ex, ey=None):
     return a
 
 
-def curve_length(curve, t0=0, t1=1) -> float:
+def curve_length(
+    curve: Union[Sequence[kdb.DPoint], Callable[[float], kdb.DPoint]], t0=0, t1=1
+) -> float:
     """Computes the total length of a curve.
 
     Args:
@@ -100,9 +103,9 @@ def curve_length(curve, t0=0, t1=1) -> float:
             parametric function of points, to be computed from t0 to t1.
     """
     # TODO possible bug: if the curve is a loop, it will return 0 (BAD)
-    if isinstance(curve, list):
+    if isinstance(curve, Sequence):
         # assuming curve is a list of points
-        scale = (curve[-1] - curve[0]).norm()
+        scale = (curve[-1] - curve[0]).length()
         if scale <= 0:
             return 0
         coords = np.array([[point.x, point.y] for point in curve]).T
@@ -110,12 +113,15 @@ def curve_length(curve, t0=0, t1=1) -> float:
     else:
         # assuming curve is a function.
         curve_func = curve
-        scale = (curve_func(t1) - curve_func(t0)).norm()
+        scale = (curve_func(t1) - curve_func(t0)).length()
         if scale <= 0:
             return 0
-        coords = lambda t: np.array([curve_func(t).x, curve_func(t).y])
+
+        def coords2d_func(t) -> NDArray[np.float_]:
+            return np.array([[p.x, p.y] for p in curve_func(t)]).T  # type: ignore
+
         _, sampled_coords = sample_function(
-            coords, [t0, t1], tol=0.0001 / scale, min_points=100
+            coords2d_func, [t0, t1], tol=0.0001 / scale, min_points=100
         )  # 1000 times more precise than the scale
         dp = np.diff(sampled_coords, axis=-1)
     ds = np.sqrt((dp**2).sum(axis=0))
@@ -252,7 +258,7 @@ def curvature_bezier(P0, P1, P2, P3):
 from scipy.optimize import minimize
 
 
-def max_curvature(P0, P1, P2, P3):
+def max_curvature(P0, P1, P2, P3) -> float:
     """Gets the maximum curvature of Bezier curve"""
     t = np.linspace(0, 1, 300)
     curv = curvature_bezier(P0, P1, P2, P3)(t)
@@ -349,7 +355,7 @@ class _Line(_Point):
 
 
 @lru_cache(maxsize=128)
-def _original_bezier_optimal(angle0: float, angle3: float) -> Tuple[float, float]:
+def _normalized_bezier_optimal(angle0: float, angle3: float) -> Tuple[float, float]:
     """This is a reduced problem of the bézier connection.
 
     Args:
@@ -452,18 +458,14 @@ def memoized_bezier_optimal(angle0: float, angle3: float, file: str) -> Tuple[fl
         return a, b
     except Exception:
         logger.error(f"Optimal Bezier interpolation has failed for angles({angle0}, {angle3}).")
-        return _original_bezier_optimal(angle0, angle3)
+        return _normalized_bezier_optimal(angle0, angle3)
 
-
-_bezier_optimal: Callable[[float, float], Tuple[float, float]]
 
 if os.path.isfile(bezier_optimal_fpath):
-    _bezier_optimal = partial(memoized_bezier_optimal, file=bezier_optimal_fpath)
-else:
-    _bezier_optimal = _original_bezier_optimal
+    _normalized_bezier_optimal = partial(memoized_bezier_optimal, file=bezier_optimal_fpath)  # type: ignore
 
 
-def bezier_optimal(P0, P3, angle0: float, angle3: float):
+def _bezier_optimal_pure(P0, P3, angle0: float, angle3: float):
     """Computes the optimal bezier curve from P0 to P3 with angles 0 and 3
 
     Args:
@@ -476,7 +478,7 @@ def bezier_optimal(P0, P3, angle0: float, angle3: float):
 
     vector = P3 - P0
     angle_m = np.arctan2(vector.y, vector.x)
-    a, b = _bezier_optimal(angle0 - angle_m, angle3 - angle_m)
+    a, b = _normalized_bezier_optimal(angle0 - angle_m, angle3 - angle_m)
 
     scaling = vector.norm()
     if scaling > 0:
@@ -500,51 +502,45 @@ def bezier_optimal(P0, P3, angle0: float, angle3: float):
 
 # Allow us to use these functions directly with pya.DPoints
 
-try:
-    _bezier_optimal_pure = bezier_optimal
 
-    def bezier_optimal(P0, P3, angle0: float, angle3: float):
-        """If inside KLayout, return computed list of KLayout points."""
-        P0 = _Point(P0.x, P0.y)
-        P3 = _Point(P3.x, P3.y)
-        scale = (P3 - P0).norm()  # rough length.
-        # if scale > 1000:  # if in nanometers, convert to microns
-        #     scale /= 1000
-        # This function returns a np.array of Points.
-        # We need to convert to array of Point coordinates
-        new_bezier_line = _bezier_optimal_pure(P0, P3, angle0, angle3)
-        bezier_point_coordinates = lambda t: np.array([new_bezier_line(t).x, new_bezier_line(t).y])
+def bezier_optimal(P0, P3, angle0: float, angle3: float) -> List[kdb.DPoint]:
+    """If inside KLayout, return computed list of KLayout points."""
+    P0 = _Point(P0.x, P0.y)
+    P3 = _Point(P3.x, P3.y)
+    scale = (P3 - P0).norm()  # rough length.
+    # if scale > 1000:  # if in nanometers, convert to microns
+    #     scale /= 1000
+    # This function returns a np.array of Points.
+    # We need to convert to array of Point coordinates
+    new_bezier_line = _bezier_optimal_pure(P0, P3, angle0, angle3)
+    bezier_point_coordinates = lambda t: np.array([new_bezier_line(t).x, new_bezier_line(t).y])
 
-        t_sampled, bezier_point_coordinates_sampled = sample_function(
-            bezier_point_coordinates, [0, 1], tol=0.005 / scale
-        )  # tol about 5 nm
+    t_sampled, bezier_point_coordinates_sampled = sample_function(
+        bezier_point_coordinates, [0, 1], tol=0.005 / scale
+    )  # tol about 5 nm
 
-        # The following adds two points right after the first and before the last point
-        # to guarantee that the first edge of the path goes out in the direction
-        # of the 'port'.
+    # The following adds two points right after the first and before the last point
+    # to guarantee that the first edge of the path goes out in the direction
+    # of the 'port'.
 
-        insert_at = np.argmax(0.001 / scale < t_sampled)
-        t_sampled = np.insert(t_sampled, insert_at, 0.001 / scale)
-        bezier_point_coordinates_sampled = np.insert(
-            bezier_point_coordinates_sampled,
-            insert_at,
-            bezier_point_coordinates(0.001 / scale),
-            axis=1,
-        )  # add a point right after the first one
-        insert_at = np.argmax(1 - 0.001 / scale < t_sampled)
-        # t_sampled = np.insert(t_sampled, insert_at, 1 - 0.001 / scale)
-        bezier_point_coordinates_sampled = np.insert(
-            bezier_point_coordinates_sampled,
-            insert_at,
-            bezier_point_coordinates(1 - 0.001 / scale),
-            axis=1,
-        )  # add a point right before the last one
-        # bezier_point_coordinates_sampled = \
-        #     np.append(bezier_point_coordinates_sampled, np.atleast_2d(bezier_point_coordinates(1 + .001 / scale)).T,
-        #               axis=1)  # finish the waveguide a little bit after
+    insert_at = np.argmax(0.001 / scale < t_sampled)
+    t_sampled = np.insert(t_sampled, insert_at, 0.001 / scale)
+    bezier_point_coordinates_sampled = np.insert(
+        bezier_point_coordinates_sampled,
+        insert_at,
+        bezier_point_coordinates(0.001 / scale),
+        axis=1,
+    )  # add a point right after the first one
+    insert_at = np.argmax(1 - 0.001 / scale < t_sampled)
+    # t_sampled = np.insert(t_sampled, insert_at, 1 - 0.001 / scale)
+    bezier_point_coordinates_sampled = np.insert(
+        bezier_point_coordinates_sampled,
+        insert_at,
+        bezier_point_coordinates(1 - 0.001 / scale),
+        axis=1,
+    )  # add a point right before the last one
+    # bezier_point_coordinates_sampled = \
+    #     np.append(bezier_point_coordinates_sampled, np.atleast_2d(bezier_point_coordinates(1 + .001 / scale)).T,
+    #               axis=1)  # finish the waveguide a little bit after
 
-        return [kdb.DPoint(x, y) for (x, y) in zip(*(bezier_point_coordinates_sampled))]  # type: ignore
-
-except ImportError:
-    logger.error("klayout not detected. It is a requirement of zeropdk for now.")
-    raise
+    return [kdb.DPoint(x, y) for (x, y) in zip(*(bezier_point_coordinates_sampled))]  # type: ignore

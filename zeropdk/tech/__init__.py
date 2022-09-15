@@ -1,12 +1,13 @@
+from typing import Any, Dict, List
+from xml.dom.minidom import Element
 import klayout.db as kdb
 
 
 class Tech:
-    layers = None
+    layers: Dict[str, kdb.LayerInfo]
 
     def __init__(self):
-        if self.layers is None:
-            self.layers = {}
+        self.layers = {}
 
     def add_layer(self, layer_name, layer_def):
         """Adds a layer to the technology file.
@@ -20,7 +21,7 @@ class Tech:
         self.layers[layer_name] = kdb.LayerInfo(layer_idx, datatype, layer_name)
 
     @classmethod
-    def load_from_xml(cls, lyp_filename):
+    def load_from_xml(cls, lyp_filename: str) -> "Tech":
         import os
 
         lyp_filepath = os.path.realpath(lyp_filename)
@@ -67,14 +68,14 @@ class Tech:
 # XML functions
 
 
-def etree_to_dict(t):
+def etree_to_dict(t: Element):
     """XML to Dict parser
     from: https://stackoverflow.com/questions/2148119/how-to-convert-an-xml-string-to-a-dictionary-in-python/10077069
     """
     from collections import defaultdict
 
-    d = {t.tag: {} if t.attrib else None}
-    children = list(t)
+    d: Dict[str, Dict] = {t.tag: {} if t.attrib else None}
+    children: List[Element] = list(t)
     if children:
         dd = defaultdict(list)
         for dc in map(etree_to_dict, children):

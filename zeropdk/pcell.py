@@ -239,7 +239,7 @@ class ParamContainer(Mapping):
             raise
         self._current_values[name] = parsed_value
 
-    def merge(self, other):
+    def merge(self, other: "ParamContainer") -> "ParamContainer":
         if not isinstance(other, ParamContainer):
             raise TypeError("Object must be a ParamContainer")
 

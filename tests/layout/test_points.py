@@ -3,9 +3,6 @@ import numpy as np
 from ..context import zeropdk  # noqa
 
 import klayout.db as kdb
-from zeropdk.klayout_helper.point import patch_points
-
-# patch_points()
 
 
 def random_point(Point, a=-10, b=10):

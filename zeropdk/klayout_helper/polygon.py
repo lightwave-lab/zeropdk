@@ -1,12 +1,14 @@
-from typing import Optional, Union
+from tabnanny import check
+from typing import Callable, List, Optional, Tuple, Union
 import pya
 import klayout.db as kdb
 
 import numpy as np
 from numpy import pi, sqrt
 from zeropdk.layout.geometry import rotate90, rotate
-from zeropdk.types import GeneralLayer
+from zeropdk.types import GeneralLayer, PointLike
 from zeropdk.klayout_helper import as_vector
+from zeropdk.layout import insert_shape
 
 
 class ZeroPDKDSimplePolygon(kdb.DSimplePolygon):
@@ -19,54 +21,103 @@ class ZeroPDKDSimplePolygon(kdb.DSimplePolygon):
     - round_corners
     """
 
-    def transform_and_rotate(self, center, ex=None):
-        """Translates the polygon by 'center' and rotates by the 'ex' orientation.
+    def transform_and_rotate(
+        self,
+        center: kdb.DVector,
+        ex: Optional[kdb.DVector] = None,
+        ey: Optional[kdb.DVector] = None,
+    ):
+        """Rotates the polygon by ex (changes coordinates to cartesian coordinates defined by vector ex)
+        and translates it by 'center'
 
         Example: if current polygon is a unit square with bottom-left corner at (0,0),
-        then square.transform_and_rotate(DPoint(0, 1), DVector(0, 1)) will
+        then square.transform_and_rotate(DVector(0, 1), DVector(0, 1)) will
         rotate the square by 90 degrees and translate it by 1 y-unit.
         The new square's bottom-left corner will be at (-1, 1).
+
+        Note: ex and ey need not be unitary.
         """
         if ex is None:
             ex = kdb.DVector(1, 0)
-        ey = rotate90(ex)
+        if ey is None:
+            ey = rotate90(ex)
 
-        polygon_dpoints_transformed = [center + p.x * ex + p.y * ey for p in self.each_point()]
+        polygon_dpoints_transformed = [
+            center.to_p() + p.x * ex + p.y * ey for p in self.each_point()
+        ]
         self.assign(ZeroPDKDSimplePolygon(polygon_dpoints_transformed))
         return self
 
-    def clip(self, x_bounds=(-np.inf, np.inf), y_bounds=(-np.inf, np.inf)):
+    Bounds = Tuple[float, float]
+
+    def clip(
+        self, x_bounds: Bounds = (-np.inf, np.inf), y_bounds: Bounds = (-np.inf, np.inf)
+    ) -> "ZeroPDKDSimplePolygon":
         """Clips the polygon at four possible boundaries.
         The boundaries are tuples based on absolute coordinates and cartesian axes.
         This method is very powerful when used with transform_and_rotate.
+        This assumes that the output polygon is convex.
         """
-        # Add points exactly at the boundary, so that the filter below works.
+        Bounds = Tuple[float, float]
+        # Reorder bounds, so check_within_bounds works.
         x_bounds = (np.min(x_bounds), np.max(x_bounds))
         y_bounds = (np.min(y_bounds), np.max(y_bounds))
 
-        check_within_bounds = (
+        check_within_bounds: Callable[[PointLike], bool] = (
             lambda p: x_bounds[0] <= p.x
             and x_bounds[1] >= p.x
             and y_bounds[0] <= p.y
             and y_bounds[1] >= p.y
         )
 
-        def intersect_left_boundary(p1, p2, x_bounds, y_bounds):
+        bounding_box = kdb.DBox(x_bounds[0], y_bounds[0], x_bounds[1], y_bounds[1])
+        if not self.touches(bounding_box):  # no overlap between polygon and bounding box.
+            self.set_points([])
+            return self
+        # Detect if polygon is completely within bounding box and return early
+        p1, p2 = self.bbox().p1, self.bbox().p2
+        if check_within_bounds(p1) and check_within_bounds(p2):
+            return self
+
+        # polygon_dpoints = list(self.each_point())
+        polygon_dpoints: List[kdb.DPoint] = list()
+        # Detect if any polygon edge crosses the bounding box.
+        # If it doesn't, then it's fully outside the bounds.
+        # Returns the box in this case
+        crossed = False
+        for edge in self.each_edge():
+            clipped_edge: Optional[kdb.DEdge] = edge.clipped(bounding_box)
+            polygon_dpoints.append(edge.p1)
+            if clipped_edge:
+                crossed = True
+                polygon_dpoints.append(clipped_edge.p1)
+                polygon_dpoints.append(clipped_edge.p2)
+        if not crossed:
+            self.assign(ZeroPDKDSimplePolygon(bounding_box))
+            return self
+        assert len(polygon_dpoints) > 2
+
+        def intersect_left_boundary(
+            p1: PointLike, p2: PointLike, x_bounds: Bounds, y_bounds: Bounds
+        ) -> Optional[kdb.DPoint]:
             left_most, right_most = (p1, p2) if p1.x < p2.x else (p2, p1)
             bottom_most, top_most = (p1, p2) if p1.y < p2.y else (p2, p1)
-            if left_most.x < x_bounds[0] and right_most.x > x_bounds[0]:
+            if left_most.x <= x_bounds[0] and right_most.x >= x_bounds[0]:
                 # outside the box, on the left
                 y_intersect = np.interp(
                     x_bounds[0],
                     [left_most.x, right_most.x],
                     [left_most.y, right_most.y],
                 )
-                if y_bounds[0] < y_intersect and y_bounds[1] > y_intersect:
+                if y_bounds[0] <= y_intersect and y_bounds[1] >= y_intersect:
                     return kdb.DPoint(float(x_bounds[0]), float(y_intersect))
             return None
 
-        def intersect(p1, p2, x_bounds, y_bounds):
-            intersect_list = list()
+        def intersect(
+            p1: kdb.DPoint, p2: kdb.DPoint, x_bounds: Bounds, y_bounds: Bounds
+        ) -> Tuple[List[kdb.DPoint], Optional[int]]:
+            """Check if edge defined between p1 and p2 intersects any of the bounds."""
+            intersect_list: List[kdb.DPoint] = list()
             last_intersect = None
 
             def rotate_bounds90(x_bounds, y_bounds, i_times):
@@ -86,10 +137,7 @@ class ZeroPDKDSimplePolygon(kdb.DSimplePolygon):
                     intersect_list.append(rotate(p, -i * pi / 2))
             return intersect_list, last_intersect
 
-        polygon_dpoints_clipped = list()
-        polygon_dpoints = list(self.each_point())
-
-        def boundary_vertex(edge_from, edge_to):
+        def boundary_vertex(edge_from: int, edge_to: int) -> kdb.DPoint:
             # left edge:0, top edge:1, right edge:2, bottom edge:3
             # returns the vertex between two edges
             assert abs(edge_from - edge_to) == 1
@@ -103,22 +151,7 @@ class ZeroPDKDSimplePolygon(kdb.DSimplePolygon):
             y = y_bounds[(1 - (horizontal_edge - 1) // 2) % 2]
             return kdb.DPoint(x, y)
 
-        # Rotate point list so we can start from a point inside
-        # (helps the boundary_vertex algorithm)
-        for idx, point in enumerate(polygon_dpoints):
-            if check_within_bounds(point):
-                break
-        else:
-            # polygon was never within bounds
-            # this can only happen if boundaries are finite
-            # return boundary vertices
-            boundary_vertices = [boundary_vertex(i, i - 1) for i in range(4, 0, -1)]
-            self.assign(ZeroPDKDSimplePolygon(boundary_vertices))
-            return self
-
-        idx += 1  # make previous_point below already be inside
-        polygon_dpoints = polygon_dpoints[idx:] + polygon_dpoints[:idx]
-
+        polygon_dpoints_clipped = list()
         previous_point = polygon_dpoints[-1]
         previous_intersect = None
         for point in polygon_dpoints:
@@ -126,34 +159,41 @@ class ZeroPDKDSimplePolygon(kdb.DSimplePolygon):
             intersected_points, last_intersect = intersect(
                 previous_point, point, x_bounds, y_bounds
             )
+            # The following statement is true if the edge between previous_point and point
+            # crosses a boundary.
             if (
                 previous_intersect is not None
                 and last_intersect is not None
                 and last_intersect != previous_intersect
+                and check_within_bounds(point)
             ):
-                if check_within_bounds(point):
-                    # this means that we are entering the box at a different edge
-                    # need to add the edge points
+                # this means that we are entering the box at a different edge
+                # need to add the edge points
 
-                    # this assumes a certain polygon orientation
-                    # assume points go clockwise, which means that
-                    # from edge 0 to 2, it goes through 1
-                    i = previous_intersect
-                    while i % 4 != last_intersect:
+                # this assumes a certain polygon orientation (clockwise)
+                # assume points go clockwise, which means that
+                # from edge 0 to 2, it goes through 1
+
+                i = previous_intersect
+                while i != last_intersect:
+                    if self.inside(boundary_vertex(i, i + 1)):
                         polygon_dpoints_clipped.append(boundary_vertex(i, i + 1))
-                        i = i + 1
+                    i = (i + 1) % 4
             polygon_dpoints_clipped.extend(intersected_points)
+            previous_point = point
             if check_within_bounds(point):
                 polygon_dpoints_clipped.append(point)
-            previous_point = point
-            if last_intersect is not None:
+            elif (
+                last_intersect is not None
+            ):  # only set previous_intersect if going from inside to outside
                 previous_intersect = last_intersect
-        self.assign(ZeroPDKDSimplePolygon(polygon_dpoints_clipped))
+        clipped_dpoly = ZeroPDKDSimplePolygon(polygon_dpoints_clipped)
+        clipped_dpoly.compress(False)
+        self.assign(clipped_dpoly)
         return self
 
     def layout(self, cell: kdb.Cell, layer: GeneralLayer):
         """Places polygon as a shape into a cell at a particular layer."""
-        from zeropdk.layout import insert_shape
 
         return insert_shape(cell, layer, self)
 
@@ -188,22 +228,17 @@ class ZeroPDKDSimplePolygon(kdb.DSimplePolygon):
             dbu: typically 0.001
         """
 
-        # TODO Very klayout specific
-
         dpoly = kdb.DPolygon(self)
         dpoly.size(dx, 5)
         dpoly = kdb.EdgeProcessor().simple_merge_p2p([dpoly.to_itype(dbu)], False, False, 1)
         dpoly = dpoly[0].to_dtype(dbu)  # kdb.DPolygon
-
-        def norm(p):
-            return sqrt(p.x**2 + p.y**2)
 
         # Filter edges if they are too small
         points = list(dpoly.each_point_hull())
         new_points = list([points[0]])
         for i in range(0, len(points)):
             delta = points[i] - new_points[-1]
-            if norm(delta) > min(10 * dbu, abs(dx)):
+            if delta.length() > min(10 * dbu, abs(dx)):
                 new_points.append(points[i])
 
         sdpoly = self.__class__(new_points)  # convert to SimplePolygon

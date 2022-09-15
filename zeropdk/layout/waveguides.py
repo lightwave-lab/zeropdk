@@ -232,10 +232,10 @@ def waveguide_dpolygon(
     point, width = point_width_list[-2]
     delta = last_point - point
     theta = np.arctan2(delta.y, delta.x)
-    final_high_point = last_point + 0.5 * last_width * kdb.DPoint(
+    final_high_point = last_point + 0.5 * last_width * kdb.DVector(
         cos(theta + pi / 2), sin(theta + pi / 2)
     )
-    final_low_point = last_point + 0.5 * last_width * kdb.DPoint(
+    final_low_point = last_point + 0.5 * last_width * kdb.DVector(
         cos(theta - pi / 2), sin(theta - pi / 2)
     )
     if (final_high_point - points_high[-1]) * delta > 0:
@@ -248,7 +248,7 @@ def waveguide_dpolygon(
     # In addition, if smooth is true:
     # Append point only if change in direction is less than 130 degrees.
 
-    def smooth_append(point_list, point):
+    def smooth_append(point_list: List[kdb.DPoint], point: kdb.DPoint) -> List[kdb.DPoint]:
         if len(point_list) < 1:
             point_list.append(point)
             return point_list
@@ -300,7 +300,7 @@ def layout_waveguide(
     points_list: Sequence[kdb.DPoint],
     width: Union[float, Sequence[float]],
     smooth=False,
-):
+) -> ZeroPDKDSimplePolygon:
     """Lays out a waveguide (or trace) with a certain width along given points.
 
     This is very useful for laying out Bezier curves with or without adiabatic tapers.

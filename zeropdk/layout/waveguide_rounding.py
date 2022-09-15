@@ -356,13 +356,13 @@ def _traceback_fw(message, category, filename, lineno, line=None):
     return "-" * 80 + "\n" + str(message) + "-" * 80 + "\n"
 
 
-def zeropdk_warn(message, *, traceback=False):
+def zeropdk_warn(message: str, *, show_traceback=False):
     """Provide a warning message with ZeroPDKWarning category and an optional traceback."""
     warnings.warn(message, category=ZeroPDKWarning, stacklevel=2)
-    if traceback:
-        import traceback
+    if show_traceback:
+        import traceback as tb
 
-        tb_stack = traceback.format_list(traceback.extract_stack()[:-1])
+        tb_stack = tb.format_list(tb.extract_stack()[:-1])
         _oldformatwarning = warnings.formatwarning
         warnings.formatwarning = _traceback_fw
         warnings.warn(
@@ -423,7 +423,7 @@ def compute_rounded_path(points: Sequence[kdb.DPoint], radius: float) -> Rounded
                 except ZeroPDKUserError as e:
                     zeropdk_warn(
                         f"`Tried to solve` Z curve, but couldn't fit. Error message: '{e}'. Fallback!",
-                        traceback=False,
+                        show_traceback=False,
                     )
                     forward_possible = False
             if not forward_possible:
@@ -578,7 +578,7 @@ def waveguide_from_points(
     except Exception as e:
         zeropdk_warn(
             f"Error while computing rounded path for waveguide. {str(e)}. Continuing...",
-            traceback=True,
+            show_traceback=True,
         )
         layout_path(cell, layer, points, 0.1)
         return points, [width] * len(points)
@@ -635,7 +635,7 @@ def layout_waveguide_from_points(
     points, widths = waveguide_from_points(
         cell, layer, points, width, radius, taper_width=taper_width, taper_length=taper_length
     )
-
+    # breakpoint()
     layout_waveguide(cell, layer, points, widths, smooth=False)
 
     return cell

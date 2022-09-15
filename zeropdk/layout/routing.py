@@ -2,6 +2,7 @@
 
 import logging
 import math
+from typing import Optional
 import numpy as np
 import klayout.db as kdb
 from zeropdk.layout.geometry import bezier_optimal
@@ -14,6 +15,7 @@ from zeropdk.layout.waveguides import (
     layout_waveguide_angle,
     layout_waveguide_angle2,
 )
+from zeropdk.types import GeneralLayer
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +57,7 @@ def layout_ebeam_waveguide_from_points(
     return cell
 
 
-def ensure_layer(layout, layer):
+def ensure_layer(layout: kdb.Layout, layer: GeneralLayer) -> Optional[int]:
     if isinstance(layer, kdb.LayerInfo):
         return layout.layer(layer)
     elif isinstance(layer, int):

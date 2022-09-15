@@ -10,7 +10,7 @@ import numpy as np
 from zeropdk.types import GeneralLayer
 
 
-def box(point1, point3, ex, ey):
+def box(point1: kdb.DPoint, point3: kdb.DPoint, ex: kdb.DVector, ey: kdb.DVector):
     """Returns a polygon of a box defined by point1, point3 and orientation ex.
     p2 ----- p3
     |        |
@@ -20,7 +20,7 @@ def box(point1, point3, ex, ey):
     """
 
     point2 = project(point3 - point1, ey, ex) * ey + point1
-    point4 = point1 + point3 - point2
+    point4 = point1 + (point3 - point2)
     return ZeroPDKDSimplePolygon([point1, point2, point3, point4])
 
 
@@ -116,8 +116,8 @@ def layout_rectangle(cell, layer, center, width, height, ex):
 
 def layout_path(cell, layer: kdb.LayerInfo, point_iterator: Iterable[kdb.DPoint], w: float):
     """Simple wrapper for kdb.DPath."""
-    path = kdb.DPath(list(point_iterator), w, 0, 0).to_itype(cell.layout().dbu)
-    insert_shape(cell, layer, kdb.DPath(path))
+    path = kdb.DPath(list(point_iterator), w, 0, 0)
+    insert_shape(cell, layer, path)
 
 
 def layout_path_with_ends(

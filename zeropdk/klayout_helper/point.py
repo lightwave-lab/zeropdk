@@ -1,3 +1,4 @@
+# type: ignore
 """
 klayout.db.Point Extensions:
   - P * np/number

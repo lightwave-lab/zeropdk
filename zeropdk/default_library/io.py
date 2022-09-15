@@ -1,3 +1,5 @@
+from dataclasses import Field, field
+from typing import Tuple
 from zeropdk.pcell import (
     PCell,
     PCellParameter,
@@ -7,6 +9,7 @@ from zeropdk.pcell import (
     TypePoint,
     Port,
     ParamContainer,
+    TypeVector,
 )
 from zeropdk.layout import insert_shape
 from zeropdk.layout.polygons import rectangle
@@ -52,11 +55,11 @@ pad_array_pitch = PCellParameter(
 origin = PCellParameter(name="origin", type=TypePoint, description="Origin", default=DPoint(0, 0))
 
 ex = PCellParameter(
-    name="ex", type=TypePoint, description="x-axis unit vector", default=DPoint(1, 0)
+    name="ex", type=TypeVector, description="x-axis unit vector", default=DVector(1, 0)
 )
 
 ey = PCellParameter(
-    name="ey", type=TypePoint, description="y-axis unit vector", default=DPoint(0, 1)
+    name="ey", type=TypeVector, description="y-axis unit vector", default=DVector(0, 1)
 )
 layer_metal = PCellParameter(name="layer_metal", type=TypeLayer, description="Metal Layer")
 
@@ -72,7 +75,7 @@ class OrientedCell(PCell):
 
     params = ParamContainer(origin, ex, ey)
 
-    def origin_ex_ey(self):
+    def origin_ex_ey(self) -> Tuple[DPoint, DVector, DVector]:
         origin = as_point(self.params["origin"])  # type: ignore
         ex = as_vector(self.params.ex)  # type: ignore
         ey = as_vector(self.params.ey)  # type: ignore
@@ -89,7 +92,6 @@ class DCPad(OrientedCell):
 
     def draw(self, cell):
         layout = cell.layout()
-
         origin, ex, ey = self.origin_ex_ey()
         cp = self.params
 

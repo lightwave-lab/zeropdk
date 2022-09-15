@@ -4,9 +4,7 @@ import numpy as np
 import numpy.typing as npt
 import pytest
 from zeropdk.klayout_helper.layout import layout_read_cell
-
 from zeropdk.layout.waveguide_rounding import compute_rounded_path, layout_waveguide_from_points
-from ..context import zeropdk  # noqa
 from zeropdk.layout.waveguides import waveguide_dpolygon
 from zeropdk.layout import insert_shape
 from zeropdk.klayout_helper import as_point
@@ -140,7 +138,6 @@ def test_waveguide_rounding(top_cell: Callable[[], Tuple[kdb.Cell, kdb.Layout]])
         231 * ex + 460 * ey,
     ]
     points_ = [origin + point for point in points]
-    # breakpoint()
     layout_waveguide_from_points(TOP, layer, points_, 5, 230)
 
     origin = as_point(80 * ex + 80 * ey)
@@ -159,6 +156,7 @@ def test_waveguide_rounding(top_cell: Callable[[], Tuple[kdb.Cell, kdb.Layout]])
     layer_index = layout.layer(layer)
     new_waveguides = kdb.Region(TOP.shapes(layer_index))
     ref_waveguides = kdb.Region(TOP_reference.shapes(layer_index))
-    assert (new_waveguides ^ ref_waveguides).area() == 0  # XOR operation
+    assert (new_waveguides - ref_waveguides).area() == 0, "New shapes were added"
+    assert (ref_waveguides - new_waveguides).area() == 0, "Old shapes were removed"
 
     TOP.write("tests/tmp/test_waveguide_rounding.gds")
