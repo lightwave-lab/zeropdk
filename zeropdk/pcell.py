@@ -490,7 +490,10 @@ class PCell:
         """
 
         # Import gdsfactory here to avoid it being a prereq
-        import gdsfactory as gf
+        try:
+            import gdsfactory as gf
+        except:
+            raise ImportError("You need to pip install gdsfactory to use the to_gdsfactory feature..")
         import klayout.db as pya
         import yaml
         import math
