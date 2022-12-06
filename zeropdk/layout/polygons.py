@@ -1,3 +1,4 @@
+from typing import Iterable
 from zeropdk.layout import insert_shape
 from zeropdk.layout.geometry import cross_prod, project, rotate90
 
@@ -47,7 +48,7 @@ def rectangle(center, width, height, ex, ey):
     """
 
     if cross_prod(ex, ey) == 0:
-        raise RuntimeError("ex={} and ey={} are not orthogonal.".format(repr(ex), repr(ey)))
+        raise RuntimeError(f"ex={repr(ex)} and ey={repr(ey)} are not orthogonal.")
 
     point1 = center - width / 2 * ex - height / 2 * ey
     point3 = center + width / 2 * ex + height / 2 * ey
@@ -111,13 +112,13 @@ import numpy as np
 from math import pi
 
 
-def layout_path(cell, layer, point_iterator, w):
+def layout_path(cell, layer: kdb.LayerInfo, point_iterator: Iterable[kdb.DPoint], w: float):
     """ Simple wrapper for pya.DPath."""
     path = pya.DPath(list(point_iterator), w, 0, 0).to_itype(cell.layout().dbu)
     cell.shapes(layer).insert(pya.Path.from_dpath(path))
 
 
-def layout_path_with_ends(cell, layer, point_iterator, w):
+def layout_path_with_ends(cell, layer: kdb.LayerInfo, point_iterator: Iterable[kdb.DPoint], w: float):
     """ Simple wrapper for pya.DPath."""
     dpath = pya.DPath(list(point_iterator), w, w / 2, w / 2)
     cell.shapes(layer).insert(dpath)
@@ -181,11 +182,9 @@ def layout_ring(cell, layer, center, r, w):
     return dpoly
 
 
-def layout_circle(cell, layer, center, r,
-        ex=None,
-        x_bounds=(-np.inf, np.inf),
-        y_bounds=(-np.inf, np.inf)
-    ):
+def layout_circle(
+    cell, layer, center, r, ex=None, x_bounds=(-np.inf, np.inf), y_bounds=(-np.inf, np.inf)
+):
     """
     function to produce the layout of a filled circle
     cell: layout cell to place the layout
@@ -400,7 +399,7 @@ def layout_arc2(
     x_bounds=(-np.inf, np.inf),
     y_bounds=(-np.inf, np.inf),
 ):
-    """ modified layout_arc with r1 and r2, instead of r (radius) and w (width). """
+    """modified layout_arc with r1 and r2, instead of r (radius) and w (width)."""
     r1, r2 = min(r1, r2), max(r1, r2)
 
     r = (r1 + r2) / 2
@@ -422,7 +421,7 @@ def layout_arc2(
 def layout_arc_with_drc_exclude(
     cell, layer, drc_layer, center, r, w, theta_start, theta_end, ex=None, **kwargs
 ):
-    """ Layout arc with drc exclude squares on sharp corners"""
+    """Layout arc with drc exclude squares on sharp corners"""
     dpoly = layout_arc(cell, layer, center, r, w, theta_start, theta_end, ex, **kwargs)
     dpoly.layout_drc_exclude(cell, drc_layer, ex)
     return dpoly
@@ -431,7 +430,7 @@ def layout_arc_with_drc_exclude(
 def layout_arc2_with_drc_exclude(
     cell, layer, drc_layer, center, r1, r2, theta_start, theta_end, ex=None, **kwargs
 ):
-    """ Layout arc2 with drc exclude squares on sharp corners"""
+    """Layout arc2 with drc exclude squares on sharp corners"""
     dpoly = layout_arc2(cell, layer, center, r1, r2, theta_start, theta_end, ex, **kwargs)
     dpoly.layout_drc_exclude(cell, drc_layer, ex)
     return dpoly

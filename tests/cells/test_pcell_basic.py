@@ -1,6 +1,10 @@
+from _pytest.config import filename_arg
 import pytest
 import os
+
+
 from ..context import zeropdk  # noqa
+from zeropdk.exceptions import ZeroPDKWarning
 from zeropdk.pcell import PCell, PCellParameter, ParamContainer, TypeDouble, TypeInt
 from zeropdk.pcell import GDSCell
 
@@ -86,6 +90,25 @@ def test_gdscell(top_cell):
             cell_count += 1
     assert cell_count == 1
 
+
+def test_wrong_gdscellname(top_cell):
+    gds_dir = gdslibpath
+    princeton_logo = GDSCell("princeton_logo_wrong_name", "princeton_logo_simple.gds", gds_dir)(
+        name="xyz"
+    )
+    TOP, layout = top_cell()
+    with pytest.raises(RuntimeError, match='princeton_logo_wrong_name'):
+        plogo, _ = princeton_logo.new_cell(layout)
+
+def test_wrong_filename(top_cell):
+    gds_dir = gdslibpath
+    with pytest.warns(ZeroPDKWarning, match=f"'princeton_logo_simple_wrongname.gds' not found in '{gdslibpath}'"):
+        princeton_logo = GDSCell("princeton_logo", "princeton_logo_simple_wrongname.gds", gds_dir)(
+            name="xyz"
+        )
+    TOP, layout = top_cell()
+    with pytest.raises(RuntimeError, match='princeton_logo_simple_wrongname.gds'):
+        plogo, _ = princeton_logo.new_cell(layout)
 
 def test_gdscellcache(top_cell):
 

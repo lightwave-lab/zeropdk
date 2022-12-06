@@ -8,7 +8,6 @@ logger.setLevel(logging.INFO)
 stdout_ch = logging.StreamHandler()
 logger.addHandler(stdout_ch)
 
-
 DEBUG = os.environ.get("ZEROPDK_DEBUG", "false") == "true"
 if DEBUG:
     logger.setLevel(logging.DEBUG)

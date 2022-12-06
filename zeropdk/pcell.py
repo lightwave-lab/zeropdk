@@ -1,12 +1,15 @@
 """PCell definitions that improve upon Klayout pcells."""
 
+from collections import defaultdict
 import os
-from copy import copy, deepcopy
-from typing import Dict, List, Tuple, Any, Type, Optional
+import warnings
 import logging
+from copy import copy, deepcopy
+from typing import Dict, List, Tuple, Any, Optional, Type
 from collections.abc import Mapping, MutableMapping
 
 import klayout.db as kdb
+from zeropdk.exceptions import ZeroPDKWarning
 from zeropdk.layout.geometry import rotate90
 
 logger = logging.getLogger(__name__)
@@ -73,7 +76,7 @@ class PCellParameter:
         return repr(self)
 
     def parse(self, value):
-        """ Makes sure that the value is of a certain type"""
+        """Makes sure that the value is of a certain type"""
         if self.type is None:
             new_type = type(value)
             self.type = new_type
@@ -145,7 +148,7 @@ class objectview(MutableMapping):
         return self.__add__(other)
 
     def __repr__(self):
-        return "objectview({})".format(repr(self.orig_d))
+        return f"objectview({repr(self.orig_d)})"
 
 
 # https://stackoverflow.com/questions/3387691/how-to-perfectly-override-a-dict
@@ -165,8 +168,8 @@ class ParamContainer(Mapping):
     TypeError: Cannot set orange to string
     """
 
-    _container: Dict[str, Type[PCellParameter]]
-    _current_values: Dict[str, Type[PCellParameter]]
+    _container: Dict[str, PCellParameter]
+    _current_values: Dict[str, PCellParameter]
 
     def __init__(self, *args):
         """Two ways of initializing:
@@ -174,8 +177,8 @@ class ParamContainer(Mapping):
         2. ParamContainer(param1, param2, param3, ...), where param is of type
             PCellParameter
         """
-        self._container = dict()
-        self._current_values = dict()
+        self._container = {}
+        self._current_values = {}
 
         if len(args) == 1 and isinstance(args[0], ParamContainer):
             param_container = args[0]
@@ -186,7 +189,7 @@ class ParamContainer(Mapping):
                 param = arg  # TODO: check type
                 self.add_param(param)
 
-    def add_param(self, param: Type[PCellParameter]):
+    def add_param(self, param: PCellParameter):
         self._container[param.name] = param
 
         # delete from current values if overwriting parameter
@@ -204,18 +207,17 @@ class ParamContainer(Mapping):
         return value
 
     def __setattr__(self, name, new_value):
-        """ Set a parameter instead of an instance attribute."""
+        """Set a parameter instead of an instance attribute."""
 
         protected_list = ("_container", "_current_values")
         if name in protected_list:
             return super().__setattr__(name, new_value)
-        else:
-            param_def = self._container[name]
-            try:
-                parsed_value = param_def.parse(new_value)
-            except TypeError:
-                raise
-            self._current_values[name] = parsed_value
+        param_def = self._container[name]
+        try:
+            parsed_value = param_def.parse(new_value)
+        except TypeError:
+            raise
+        self._current_values[name] = parsed_value
 
     def merge(self, other):
         if not isinstance(other, ParamContainer):
@@ -243,12 +245,12 @@ class ParamContainer(Mapping):
 
 
 class Port(object):
-    """ Defines a port object """
+    """Defines a port object"""
 
     def __init__(self, name, position, direction, width, port_type=None):
         self.name: str = name
-        self.position: Type[kdb.DPoint] = position  # Point
-        self.direction: Type[kdb.DVector] = direction  # Vector
+        self.position: kdb.DPoint = position  # Point
+        self.direction: kdb.DVector = direction  # Vector
         self.type: str = port_type
         self.width: float = width
 
@@ -269,14 +271,14 @@ class Port(object):
 
         return self
 
-    def rotate(self, angle_deg):
+    def rotate(self, angle_deg: float):
         from zeropdk.layout.geometry import rotate
         from math import pi
 
         self.direction = rotate(self.direction, angle_deg * pi / 180)
         return self
 
-    def draw(self, cell, layer):
+    def draw(self, cell: kdb.Cell, layer: kdb.LayerInfo):
         """ Draws this port on cell's layer using klayout.db"""
         if self.name.startswith("el"):
             pin_length = self.width
@@ -325,10 +327,10 @@ class Port(object):
 
 
 def place_cell(
-    parent_cell: Type[kdb.Cell],
-    pcell: Type[kdb.Cell],
-    ports_dict: Dict[str, Type[Port]],
-    placement_origin: Type[kdb.DPoint],
+    parent_cell: kdb.Cell,
+    pcell: kdb.Cell,
+    ports_dict: Dict[str, Port],
+    placement_origin: kdb.DPoint,
     relative_to: Optional[str] = None,
     transform_into: bool = False,
 ):
@@ -379,9 +381,9 @@ class PCell:
     # properties. The logic for this can be found in __new__ method
     # below
     params: ParamContainer = ParamContainer()
-    _cell: Type[kdb.Cell]
+    _cell: kdb.Cell
 
-    def draw(self, cell):
+    def draw(self, cell: kdb.Cell) -> Tuple[kdb.Cell, Dict[str, Port]]:
         raise NotImplementedError()
 
     def __new__(cls, *args, **kwargs):
@@ -441,11 +443,11 @@ class PCell:
 
     def place_cell(
         self,
-        parent_cell: Type[kdb.Cell],
-        placement_origin: Type[kdb.DPoint],
+        parent_cell: kdb.Cell,
+        placement_origin: kdb.DPoint,
         relative_to: Optional[str] = None,
         transform_into: bool = False,
-    ):
+    ) -> Dict[str, Port]:
         """Places this pcell into parent_cell and return ports with
             updated position and orientation.
         Args:
@@ -475,6 +477,7 @@ class PCell:
             transform_into=transform_into,
         )
 
+<<<<<<< HEAD
     def to_gdsfactory(self, tempfile="./temp", translate_ports=True, port_layer=[1,0]):
         """Converts the PCell to a gdsfactory Component (https://github.com/gdsfactory/gdsfactory)
         Useful to access gdsfactory features such as simulation, rendering, etc.
@@ -525,8 +528,13 @@ class PCell:
 
 
 _zeropdk_cache_store = dict()
+=======
+>>>>>>> master
 
-def GDSCell(cell_name: str, filename: str, gds_dir: str):
+_zeropdk_cache_store: Dict[Tuple[str, str, str], Dict[Tuple[str, str, kdb.Layout], kdb.Cell]] = defaultdict(dict)
+
+
+def GDSCell(cell_name: str, filename: str, gds_dir: str) -> Type[PCell]:
     """
     Args:
         cell_name: cell within that file.
@@ -538,18 +546,21 @@ def GDSCell(cell_name: str, filename: str, gds_dir: str):
     """
 
     assert gds_dir is not None
+    filepath = os.path.join(gds_dir, filename)
+    if not os.path.exists(filepath):
+        warnings.warn(f"Warning while creating GDSCell for cell name '{cell_name}': '{filename}' not found in '{gds_dir}'", category=ZeroPDKWarning)
 
     class GDS_cell_base(PCell):
-        """ Imports a gds file and places it."""
+        """Imports a gds file and places it."""
 
         # If we call GDSCell with the same parameters, we want the same cache.
-        _cell_cache = _zeropdk_cache_store.setdefault((cell_name, filename, gds_dir), dict())
+        _cell_cache = _zeropdk_cache_store[(cell_name, filename, gds_dir)]
         _gds_cell_name = cell_name
 
         def __init__(self, name=cell_name, params=None):
             PCell.__init__(self, name=name, params=params)
 
-        def get_gds_cell(self, layout):
+        def get_gds_cell(self, layout: kdb.Layout) -> kdb.Cell:
             filepath = os.path.join(gds_dir, filename)
             cell_name = self._gds_cell_name
 
@@ -566,15 +577,18 @@ def GDSCell(cell_name: str, filename: str, gds_dir: str):
                 new_cell_name = gdscell.name
 
                 # Add this cell to the list of cells that cannot be deduplicated
-                from zeropdk.layout.cache import CACHE_PROP_ID  # pylint: disable=import-outside-toplevel
-                cache_set = set([new_cell_name])
+                from zeropdk.layout.cache import (
+                    CACHE_PROP_ID,
+                )  # pylint: disable=import-outside-toplevel
+
+                cache_set = {new_cell_name}
                 if layout.property(CACHE_PROP_ID) is not None:
                     cache_set |= set(layout.property(CACHE_PROP_ID).split(","))
                 layout.set_property(CACHE_PROP_ID, ",".join(cache_set))
                 self._cell_cache[(cell_name, filepath, layout)] = gdscell
             return gdscell
 
-        def draw_gds_cell(self, cell):
+        def draw_gds_cell(self, cell: kdb.Cell) -> kdb.Cell:
             logger.warning("Using default draw_gds_cell method in %s.", self.name)
             layout = cell.layout()
             gdscell = self.get_gds_cell(layout)
@@ -594,30 +608,9 @@ def GDSCell(cell_name: str, filename: str, gds_dir: str):
 
 
 def port_to_pin_helper(
-    ports_list: List[Type[Port]], cell: Type[kdb.Cell], layerPinRec: Type[kdb.LayerInfo]
+    ports_list: List[Port], cell: kdb.Cell, layerPinRec: kdb.LayerInfo
 ):
     """ Draws port shapes for visual help in KLayout. """
-    # Create the pins, as short paths:
-    # from siepic_tools.config import PIN_LENGTH
-    PIN_LENGTH = 100
-    dbu = cell.layout().dbu
 
     for port in ports_list:
-        if port.name.startswith("el"):
-            pin_length = port.width
-        else:
-            pin_length = PIN_LENGTH * dbu
-
-        port_position_i = port.position.to_itype(dbu)
-        cell.shapes(layerPinRec).insert(
-            kdb.DPath(
-                [
-                    port.position - 0.5 * pin_length * port.direction,
-                    port.position + 0.5 * pin_length * port.direction,
-                ],
-                port.width,
-            ).to_itype(dbu)
-        )
-        cell.shapes(layerPinRec).insert(
-            kdb.Text(port.name, kdb.Trans(kdb.Trans.R0, port_position_i.x, port_position_i.y))
-        ).text_size = (2 / dbu)
+        port.draw(cell, layerPinRec)
