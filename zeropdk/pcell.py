@@ -477,7 +477,6 @@ class PCell:
             transform_into=transform_into,
         )
 
-<<<<<<< HEAD
     def to_gdsfactory(self, tempfile="./temp", translate_ports=True, port_layer=[1,0]):
         """Converts the PCell to a gdsfactory Component (https://github.com/gdsfactory/gdsfactory)
         Useful to access gdsfactory features such as simulation, rendering, etc.
@@ -528,8 +527,6 @@ class PCell:
 
 
 _zeropdk_cache_store = dict()
-=======
->>>>>>> master
 
 _zeropdk_cache_store: Dict[Tuple[str, str, str], Dict[Tuple[str, str, kdb.Layout], kdb.Cell]] = defaultdict(dict)
 
