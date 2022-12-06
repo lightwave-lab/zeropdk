@@ -477,6 +477,59 @@ class PCell:
             transform_into=transform_into,
         )
 
+    def to_gdsfactory(self, tempfile="./temp", translate_ports=True, port_layer=[1,0]):
+        """Converts the PCell to a gdsfactory Component (https://github.com/gdsfactory/gdsfactory)
+        Useful to access gdsfactory features such as simulation, rendering, etc.
+
+        - Maps zeropdk ports to gdsfactory ports
+        - Can map zeropdk layout.layers to gdsfactory LayerStack 
+        - Default is all ports on [1,0] layer
+
+        Returns:
+            Component
+        """
+
+        # Import gdsfactory here to avoid it being a prereq
+        try:
+            import gdsfactory as gf
+        except:
+            raise ImportError("You need to pip install gdsfactory to use the to_gdsfactory feature..")
+        import klayout.db as pya
+        import yaml
+        import math
+
+        # Instanciate zeropdk cell
+        layout = pya.Layout()
+        cell, ports = self.new_cell(layout)
+
+        # Translates zeropdk ports to gdsfactory ports
+        if translate_ports:
+            yml_dict = {}
+            yml_dict["ports"] = {}
+            for port_name, port in ports.items():
+                yml_dict["ports"][port_name] = {}
+                yml_dict["ports"][port_name]["center"] = [port.position.x, port.position.y]
+                yml_dict["ports"][port_name]["width"] = port.width
+                yml_dict["ports"][port_name]["orientation"] = math.degrees(math.atan2(port.direction.x, port.direction.y))
+                yml_dict["ports"][port_name]["port_type"] = port.type
+                yml_dict["ports"][port_name]["layer"] = port_layer
+
+            # Generate metadata
+            with open(f'{tempfile}.yml', 'w') as outfile:
+                yaml.dump(yml_dict, outfile, default_flow_style=False)
+            
+        # Convert by writing with one software, and reading with the other
+        layout.write(f'{tempfile}.gds')
+        c = gf.import_gds(gdspath=f'{tempfile}.gds')
+
+        # Clean up
+        os.remove(f'{tempfile}.gds')
+        if translate_ports:
+            os.remove(f'{tempfile}.yml')
+        return c
+
+
+_zeropdk_cache_store = dict()
 
 _zeropdk_cache_store: Dict[Tuple[str, str, str], Dict[Tuple[str, str, kdb.Layout], kdb.Cell]] = defaultdict(dict)
 
