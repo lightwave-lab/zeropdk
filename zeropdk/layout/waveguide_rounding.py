@@ -1,12 +1,14 @@
 """ Straight waveguide rounding algorithms"""
 from functools import lru_cache
 from math import atan2, tan, inf
-from typing import List, Sequence, Tuple, Union
+from numbers import Number
+from typing import Callable, List, Sequence, Tuple, Union
 import warnings
 import numpy as np
+import numpy.typing as npt
 import klayout.db as kdb
 from zeropdk.klayout_helper import as_point
-from zeropdk.layout import GeneralLayer
+from zeropdk.layout import GeneralLayer, insert_shape
 from zeropdk.layout.geometry import rotate, fix_angle, cross_prod
 from zeropdk.layout.algorithms.sampling import sample_function
 from zeropdk.layout.polygons import layout_path
@@ -109,7 +111,9 @@ class _Arc:
             theta_start = (theta_start - theta_end) % (2 * pi) + theta_end
             theta_start, theta_end = theta_end, theta_start
 
-        arc_function = lambda t: np.array([r * np.cos(t), r * np.sin(t)])
+        arc_function: Callable[[npt.ArrayLike], npt.NDArray] = lambda t: np.array(
+            [r * np.cos(t), r * np.sin(t)]
+        )
 
         # in the function below, theta_start must be smaller than theta_end
         t, coords = sample_function(arc_function, [theta_start, theta_end], tol=0.002 / r)
@@ -136,7 +140,7 @@ class _Arc:
 
 
 class _Line:
-    def __init__(self, P1, P2):
+    def __init__(self, P1: kdb.DPoint, P2: kdb.DPoint):
         self.P1 = P1
         self.P2 = P2
 
@@ -473,8 +477,8 @@ def compute_rounded_path(points: Sequence[kdb.DPoint], radius: float) -> Rounded
 class _Path:
     """Object holding path plus width information"""
 
-    def __init__(self, points, widths):
-        self.points = points
+    def __init__(self, points: Sequence[kdb.DPoint], widths: Union[Number, Sequence[Number]]):
+        self.points: Sequence[kdb.DPoint] = points
 
         # This can be a single width or a list of widths, just like in layout_waveguide()
         self.widths = widths
@@ -504,7 +508,7 @@ class _Taper(_Path):
         )
 
 
-def _compute_tapered_line(line, waveguide_width, taper_width, taper_length):
+def _compute_tapered_line(line: _Line, waveguide_width, taper_width, taper_length):
     """Takes a _Line object and computes two tapers with taper_width and taper_length"""
 
     minimum_length = 30 + 2 * taper_length  # don't bother tapering waveguides beyond this length
@@ -524,11 +528,11 @@ def _compute_tapered_line(line, waveguide_width, taper_width, taper_length):
     ]
 
 
-def compute_untapered_path(path, waveguide_width):
+def compute_untapered_path(path, waveguide_width) -> List[_Path]:
     return [_Path(element.get_points(), waveguide_width) for element in path]
 
 
-def compute_tapered_path(path, waveguide_width, taper_width, taper_length):
+def compute_tapered_path(path, waveguide_width, taper_width, taper_length) -> List[_Path]:
     tapered_path = []
     for element in path:
         if isinstance(element, _Line):
@@ -557,15 +561,23 @@ def unique_points(point_list: Sequence[kdb.DPoint]) -> List[kdb.DPoint]:
 
 
 def waveguide_from_points(
-    cell, layer, points, width, radius, taper_width=None, taper_length=None
+    cell: kdb.Cell,
+    layer: kdb.LayerInfo,
+    points: Sequence[kdb.DPoint],
+    width: float,
+    radius,
+    taper_width=None,
+    taper_length=None,
 ) -> Tuple[List[kdb.DPoint], List[float]]:
     """Draws a waveguide with rounded corners given a path of manhattan-like points.
 
     Returns:
         - points: list of DPoints
-        - widths: list of widths with same length as points.
+        - width: floating point
+        - radius: floating point (must be greater than half the width)
 
     """
+    assert isinstance(width, Number), "This function takes a single width"
     assert radius > width / 2, "Please use a radius larger than the half-width"
     points = unique_points(points)
 
@@ -590,23 +602,26 @@ def waveguide_from_points(
         waveguide_path = compute_untapered_path(rounded_path, width)
 
     # creating a single path
-    _draw_points = []
-    _draw_widths = []
+    _draw_points: List[kdb.DPoint] = []
+    _draw_widths: List[float] = []
     for element in waveguide_path:
-        points, width = element.points, element.widths
+        points, _width = element.points, element.widths
         n_points = len(points)
         try:
-            if len(width) == n_points:
+            if isinstance(_width, Number):
                 _draw_points.extend(points)
-                _draw_widths.extend(width)
-            elif len(width) == 2:
-                _draw_widths.extend(np.linspace(width[0], width[1], n_points))
+                _draw_widths.extend(np.ones(n_points) * _width)
+            elif len(_width) == n_points:
+                _draw_points.extend(points)
+                _draw_widths.extend(_width)
+            elif len(_width) == 2:
+                _draw_widths.extend(np.linspace(_width[0], _width[1], n_points))
                 _draw_points.extend(points)
             else:
                 raise RuntimeError("Internal error detected. Debug please.")
         except TypeError:
             _draw_points.extend(points)
-            _draw_widths.extend(np.ones(n_points) * width)
+            _draw_widths.extend(np.ones(n_points) * _width)
 
     # deleting repeated points
     _cur_point = None
@@ -642,18 +657,17 @@ def layout_waveguide_from_points(
 
 
 def main():
-    def trace_rounded_path(cell, layer, rounded_path, width):
+    def trace_rounded_path(cell: kdb.Cell, layer: kdb.LayerInfo, rounded_path, width):
         points = []
         for item in rounded_path:
             points.extend(item.get_points())
 
         dpath = kdb.DPath(points, width, 0, 0)
+        insert_shape(cell, layer, dpath)
 
-        cell.shapes(layer).insert(dpath)
-
-    def trace_reference_path(cell, layer, points, width):
+    def trace_reference_path(cell: kdb.Cell, layer: kdb.LayerInfo, points, width):
         dpath = kdb.DPath(points, width, 0, 0)
-        cell.shapes(layer).insert(dpath)
+        insert_shape(cell, layer, dpath)
 
     layout = kdb.Layout()
     TOP = layout.create_cell("TOP")

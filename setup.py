@@ -46,7 +46,7 @@ def main():
             "Operating System :: OS Independent",
             "Topic :: Scientific/Engineering",
         ),
-        install_requires=["numpy", "klayout", "scipy"],
+        install_requires=["numpy>=1.20", "klayout>=0.28.3", "scipy"],
     )
 
     setup(**metadata)

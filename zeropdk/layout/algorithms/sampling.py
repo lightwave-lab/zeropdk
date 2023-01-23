@@ -165,7 +165,7 @@ def _sample_function(
 
         # compute the length of each line segment in the path
         dp = np.diff(p, axis=-1)
-        s = np.sqrt((dp**2).sum(axis=0))
+        s = np.sqrt((dp ** 2).sum(axis=0))
         s_tot = s.sum()
 
         # compute the angle between consecutive line segments

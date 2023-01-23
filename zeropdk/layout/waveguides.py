@@ -10,7 +10,7 @@ TODO: make some of the functions in util use these.
 """
 
 from itertools import repeat
-from numbers import Real
+from numbers import Number, Real
 from typing import List, Sequence, Tuple, TypeVar, Union
 import numpy as np
 from numpy import cos, sin, pi, sqrt
@@ -264,7 +264,7 @@ def waveguide_dpolygon(
 
             # Only add new point if the area of the triangle built with
             # current edge and previous edge is greater than dbu^2/2
-            if abs(cross_prod(prev_edge, curr_edge)) > dbu**2 / 2:
+            if abs(cross_prod(prev_edge, curr_edge)) > dbu ** 2 / 2:
                 if smooth:
                     # avoid corners when smoothing
                     if cos_angle(curr_edge, prev_edge) > cos(130 / 180 * pi):
@@ -298,7 +298,7 @@ def layout_waveguide(
     cell: kdb.Cell,
     layer: GeneralLayer,
     points_list: Sequence[kdb.DPoint],
-    width: Union[float, Sequence[float]],
+    width: Union[Number, Sequence[Number]],
     smooth=False,
 ) -> ZeroPDKDSimplePolygon:
     """Lays out a waveguide (or trace) with a certain width along given points.

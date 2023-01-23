@@ -29,4 +29,4 @@ def layout_read_cell(layout: Layout, cell_name: str, filepath: str) -> Cell:
 
 
 def patch_layout():
-    Layout.read_cell = layout_read_cell
+    Layout.read_cell = layout_read_cell  # type: ignore

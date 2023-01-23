@@ -105,8 +105,9 @@ def make_points_picklable():
 
 
 def patch_points():
-    make_points_picklable()
     for klass in KLayoutPoints:
+        klass.__getstate__ = pyaPoint__getstate__
+        klass.__setstate__ = pyaPoint__setstate__
         klass.__init__ = pyaPoint__init__
         klass.__rmul__ = pyaPoint__rmul__
         klass.__mul__ = pyaPoint__mul__

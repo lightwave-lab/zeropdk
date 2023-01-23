@@ -124,7 +124,7 @@ def curve_length(
             coords2d_func, [t0, t1], tol=0.0001 / scale, min_points=100
         )  # 1000 times more precise than the scale
         dp = np.diff(sampled_coords, axis=-1)
-    ds = np.sqrt((dp**2).sum(axis=0))
+    ds = np.sqrt((dp ** 2).sum(axis=0))
     return ds.sum()
 
 
@@ -225,8 +225,8 @@ def bezier_line(P0, P1, P2, P3):
     curve_func = (
         lambda t: (1 - t) ** 3 * P0
         + 3 * (1 - t) ** 2 * t * P1
-        + 3 * (1 - t) * t**2 * P2
-        + t**3 * P3
+        + 3 * (1 - t) * t ** 2 * P2
+        + t ** 3 * P3
     )
     return curve_func
 
@@ -244,7 +244,7 @@ def curvature_bezier(P0, P1, P2, P3):
     b_prime = (
         lambda t: 3 * (1 - t) ** 2 * (P1 - P0)
         + 6 * (1 - t) * t * (P2 - P1)
-        + 3 * t**2 * (P3 - P2)
+        + 3 * t ** 2 * (P3 - P2)
     )
     b_second = lambda t: 6 * (1 - t) * (P2 - 2 * P1 + P0) + 6 * t * (P3 - 2 * P2 + P1)
     dx = lambda t: b_prime(t).x
@@ -340,7 +340,7 @@ class _Point(object):
         return f"Point({self.x}, {self.y})"
 
     def norm(self):
-        return sqrt(self.x**2 + self.y**2)
+        return sqrt(self.x ** 2 + self.y ** 2)
 
 
 class _Line(_Point):

@@ -6,7 +6,7 @@ import pickle
 import logging
 from hashlib import sha256
 from functools import partial, wraps
-from typing import Any, Type, Union, Callable, Dict
+from typing import Any, Optional, Type, Union, Callable, Dict
 
 import klayout.db as pya
 from zeropdk.klayout_helper.point import make_points_picklable
@@ -130,7 +130,7 @@ def read_layout(layout: pya.Layout, gds_filename: str, disambiguation_name: str 
 
 
 def cache_cell(
-    cls: Type[PCell] = None, *, extra_hash: Any = None, cache_dir: str = CACHE_DIR
+    cls: Optional[Type[PCell]] = None, *, extra_hash: Any = None, cache_dir: str = CACHE_DIR
 ) -> Union[Type[PCell], Callable]:
     """Caches results of pcell call to save build time.
 
@@ -239,7 +239,7 @@ def cache_cell(
             cell.insert(
                 pya.DCellInstArray(
                     retrieved_cell.cell_index(),
-                    pya.DTrans(pya.DTrans.R0, pya.DPoint(0, 0)),
+                    pya.DTrans(pya.DTrans.R0, pya.DVector(0, 0)),
                 )
             )
             return cell, ports

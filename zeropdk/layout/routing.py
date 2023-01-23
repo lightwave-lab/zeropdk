@@ -64,6 +64,7 @@ def ensure_layer(layout: kdb.Layout, layer: GeneralLayer) -> Optional[int]:
         return layer
     else:
         logger.error(f"{layer} not recognized")
+    return None
 
 
 def common_layout_manhattan_traces(
